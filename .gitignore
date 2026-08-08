@@ -13,6 +13,12 @@ dist-ssr
 *.local
 .claude/settings.local.json
 
+# Checkpoint-Log-Hook: transiente Uebergabedatei vom GitHub-Connector
+# (siehe .claude/hooks/append-checkpoint-log.sh) -- persistente Historie
+# liegt in der Checkpoint-Log-Tabelle in CLAUDE.md
+/checkpoint-result.json
+/checkpoint-result.processed.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
