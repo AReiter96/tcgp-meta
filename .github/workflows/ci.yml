@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 jobs:
-  lint-typecheck-build:
+  lint-typecheck-test-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,5 +20,7 @@ jobs:
       - run: npm run lint
 
       - run: npm run typecheck
+
+      - run: npm run test
 
       - run: npm run build

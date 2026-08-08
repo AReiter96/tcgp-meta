@@ -7,13 +7,24 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
 ## Stack
 - Sprache/Runtime: TypeScript, React 18, Vite
 - Framework: Tailwind CSS, vite-plugin-pwa (Workbox), Dexie.js, TanStack Query
+- Kartendaten-Client: `@tcgdex/sdk` (offizielles TypeScript-SDK, seit M1) --
+  liefert echte, aus der API generierte Typen, spart eigene REST-Query-Logik
 - Backend: KEINS im MVP (reiner Client, kein Server/Proxy)
-- Build/Test: Vite build, Vitest, GitHub Actions (Lint/Typecheck/Build-Gate)
+- Build/Test: Vite build, Vitest (seit M1 aktiv genutzt, inkl.
+  @testing-library/react + fake-indexeddb fuer Dexie-Tests), GitHub Actions
+  (Lint/Typecheck/Test/Build-Gate)
 - Deployment-Ziel: Vercel (Free Tier), automatische PR-Preview-Deployments
 
 ## Architektur (Kurzfassung)
-- Kartendaten: TCGdex API (tcgp-Serie) primär, GitHub-Kartendatenbank Fallback,
+- Kartendaten: TCGdex API (tcgp-Serie) primär via `@tcgdex/sdk`
+  (src/lib/tcgdex/), GitHub-Kartendatenbank als Fallback vorgesehen aber in M1
+  NICHT implementiert (keine Evidenz für Lücken in der tcgp-Serie; Client-
+  Funktionen sind bewusst austauschbar gehalten, falls später doch nötig).
   Bilder nur verlinkt (kein Hosting/Caching)
+- Sync: TCGdex -> Dexie (src/lib/db/sync.ts) beim ersten Laden (leerer Cache)
+  bzw. manuell per "Aktualisieren"-Button (Cache-Invalidierung); Browse/Such-UI
+  unter /karten filtert clientseitig auf den Dexie-Daten (TanStack Query
+  cached/orchestriert nur den Ladevorgang, kein Re-Fetch pro Tastenanschlag)
 - Meta/Turnierdaten: Limitless API direkt vom Client, ausschließlich
   unauthentifizierte Endpunkte (kein Key, kein Proxy)
 - Archetyp-Gruppierung: client-seitige Heuristik über getDeckArchetype()
@@ -37,14 +48,16 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   tatsächlich public-facing ist (Formular verlangt begründeten Use-Case)
 
 ## Aktueller Stand
-- Letztes abgeschlossenes Feature: M0 Setup & Infra
-- Nächster Meilenstein: M1
+- Letztes abgeschlossenes Feature: M1 Kartendatenbank (TCGdex-Client via
+  `@tcgdex/sdk`, Dexie-Sync, TanStack Query, Browse/Such-UI unter /karten)
+- Nächster Meilenstein: M2
 - Offene Entscheidungen: keine
 
 ## Checkpoint-Log
 <!-- automatisch per Hook, siehe .claude/hooks/append-checkpoint-log.sh -->
 | Datum | Meilenstein | Ergebnis | Scope-Drift erkannt? | Aktion |
 |---|---|---|---|---|
+| 2026-08-08 | M1 | TCGdex-Client (ueber @tcgdex/sdk) + Dexie-Sync (Serie tcgp -> Sets -> volle Karten) + TanStack Query + Browse/Such-UI unter /karten (Namenssuche + Typfilter, beides clientseitig auf Dexie-Daten) umgesetzt. GitHub-Fallback-DB bewusst nicht implementiert, da keine Evidenz fuer Luecken in der tcgp-Serie bei TCGdex; Client-Funktionen bleiben dafuer austauschbar. Vitest erstmals produktiv genutzt (16 Tests: Mapping/Sync/Filter/Bild-URL/UI-Ladezustaende), CI um Test-Stufe erweitert. | Zwei dokumentierte, mit dem Nutzer abgestimmte Abweichungen: (1) @tcgdex/sdk als neue Dependency statt eigenem REST-Client, um Typen/Endpunkte statt aus Doku-Suchtreffern aus dem echten npm-Package zu verifizieren. (2) Bugfix an .claude/hooks/append-checkpoint-log.sh (las noch deutsche Keys statt der laut Vorgabe bereits korrigierten englischen). Kernscope (Karten-Feature) unveraendert. | Beide Punkte in CLAUDE.md (Stack/Architektur) nachgetragen. Kein Live-Smoke-Test gegen die echte TCGdex-API moeglich (Sandbox-Egress-Sperre auf api.tcgdex.net) -- als Tech-Debt/Deploy-Gate dokumentiert. |
 
 ## Bekannte Risiken / Tech Debt
 - IP/Legal: Pokémon-Takedown-Historie -- Fan-Content-Disclaimer, keine
@@ -56,6 +69,12 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   MVP-Kompromiss, dokumentiert in getDeckArchetype()
 - Impressum/Datenschutz vorerst Platzhalter -- GATE: kein Produktions-Deploy
   vor Ersetzung durch echte Texte
+- TCGdex-Client (M1) wurde in einer Sandbox mit Netzwerk-Egress-Sperre auf
+  api.tcgdex.net gebaut -- Typen/Endpunkte sind ueber das offizielle
+  `@tcgdex/sdk`-Package (npm) verifiziert, ein echter Live-Smoke-Test gegen
+  die API war in der Session aber nicht moeglich. GATE: vor Produktions-Deploy
+  /karten einmal gegen die echte API pruefen (z.B. lokal oder im
+  Vercel-Preview)
 
 ## MCP-Server / externe Tools
 - GitHub-Connector -- Repo-Zugriff für Claude Code on the web + Cowork
