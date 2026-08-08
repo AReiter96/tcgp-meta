@@ -4,6 +4,8 @@
 # (siehe CLAUDE.md, Abschnitt "Plugins & Connectors": GitHub-Connector
 # schreibt checkpoint-result.json/Report). Ohne diese Datei ist der Hook ein
 # No-op, damit ein Stop-Event ohne Checkpoint-Ergebnis nichts kaputt macht.
+# Erwartete Keys in checkpoint-result.json (englisch): date, milestone,
+# result, scope_drift, action.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -19,14 +21,14 @@ if [[ ! -f "$CLAUDE_MD" ]]; then
   exit 1
 fi
 
-datum=$(jq -r '.datum // empty' "$RESULT_FILE")
+datum=$(jq -r '.date // empty' "$RESULT_FILE")
 if [[ -z "$datum" ]]; then
   datum=$(date +%Y-%m-%d)
 fi
-meilenstein=$(jq -r '.meilenstein // "TODO"' "$RESULT_FILE")
-ergebnis=$(jq -r '.ergebnis // "TODO"' "$RESULT_FILE")
+meilenstein=$(jq -r '.milestone // "TODO"' "$RESULT_FILE")
+ergebnis=$(jq -r '.result // "TODO"' "$RESULT_FILE")
 scope_drift=$(jq -r '.scope_drift // "TODO"' "$RESULT_FILE")
-aktion=$(jq -r '.aktion // "TODO"' "$RESULT_FILE")
+aktion=$(jq -r '.action // "TODO"' "$RESULT_FILE")
 
 row="| ${datum} | ${meilenstein} | ${ergebnis} | ${scope_drift} | ${aktion} |"
 

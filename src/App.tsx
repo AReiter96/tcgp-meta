@@ -1,5 +1,6 @@
 import { Route, Routes, Link } from 'react-router-dom'
 import { Home } from './pages/Home'
+import { Karten } from './pages/Karten'
 import { Impressum } from './pages/Impressum'
 import { Datenschutz } from './pages/Datenschutz'
 
@@ -10,6 +11,9 @@ function App() {
         <Link to="/" className="mr-4 hover:underline">
           Start
         </Link>
+        <Link to="/karten" className="mr-4 hover:underline">
+          Karten
+        </Link>
         <Link to="/impressum" className="mr-4 hover:underline">
           Impressum
         </Link>
@@ -19,6 +23,7 @@ function App() {
       </nav>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/karten" element={<Karten />} />
         <Route path="/impressum" element={<Impressum />} />
         <Route path="/datenschutz" element={<Datenschutz />} />
       </Routes>
