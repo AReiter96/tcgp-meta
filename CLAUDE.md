@@ -6,7 +6,8 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
 
 ## Stack
 - Sprache/Runtime: TypeScript, React 18, Vite
-- Framework: Tailwind CSS, vite-plugin-pwa (Workbox), Dexie.js, TanStack Query
+- Framework: Tailwind CSS, vite-plugin-pwa (Workbox), Dexie.js, TanStack Query,
+  react-router-dom
 - Backend: KEINS im MVP (reiner Client, kein Server/Proxy)
 - Build/Test: Vite build, Vitest, GitHub Actions (Lint/Typecheck/Build-Gate)
 - Deployment-Ziel: Vercel (Free Tier), automatische PR-Preview-Deployments
@@ -45,6 +46,7 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
 <!-- automatisch per Hook, siehe .claude/hooks/append-checkpoint-log.sh -->
 | Datum | Meilenstein | Ergebnis | Scope-Drift erkannt? | Aktion |
 |---|---|---|---|---|
+| 2026-08-08 | M0 Infra-Bootstrap | ok | nein | - |
 
 ## Bekannte Risiken / Tech Debt
 - IP/Legal: Pokémon-Takedown-Historie -- Fan-Content-Disclaimer, keine
