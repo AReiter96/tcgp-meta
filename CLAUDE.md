@@ -37,8 +37,8 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   tatsächlich public-facing ist (Formular verlangt begründeten Use-Case)
 
 ## Aktueller Stand
-- Letztes abgeschlossenes Feature: -
-- Nächster Meilenstein: M0 Setup & Infra
+- Letztes abgeschlossenes Feature: M0 Setup & Infra
+- Nächster Meilenstein: M1
 - Offene Entscheidungen: keine
 
 ## Checkpoint-Log
