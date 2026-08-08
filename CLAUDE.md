@@ -5,7 +5,9 @@ PWA zur Anzeige von Meta-/Tierlist-/Winrate-Daten für Pokemon TCG Pocket
 Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
 
 ## Stack
-- Sprache/Runtime: TypeScript, React 18, Vite
+- Sprache/Runtime: TypeScript, React 18, Vite -- Node >=22.22.2 (siehe
+  package.json engines; seit M1 durch jsdom/undici-Testdependencies
+  erzwungen, CI-Workflow entsprechend auf Node 22 gesetzt)
 - Framework: Tailwind CSS, vite-plugin-pwa (Workbox), Dexie.js, TanStack Query
 - Kartendaten-Client: `@tcgdex/sdk` (offizielles TypeScript-SDK, seit M1) --
   liefert echte, aus der API generierte Typen, spart eigene REST-Query-Logik
