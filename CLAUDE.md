@@ -39,6 +39,16 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
 - Code-Style: ESLint + Prettier, TS strict mode
 - Commit-Format: Conventional Commits
 - Test-Pflicht: keine PR ohne Build-/Typecheck-Erfolg
+- Commit/Push vs. Merge: Claude committet und pusht seinen Arbeitsstand
+  grundsätzlich auf den Feature-Branch, auch wenn eine Session-Vorgabe
+  "kein Commit durch dich" sagt -- gemeint ist damit "kein Merge ohne
+  Freigabe", nicht "kein Commit". Grund: Claude Code on the web läuft in
+  einem ephemeren Container ohne lokalen Zugriff für den Nutzer; ohne
+  Commit+Push gibt es keinen PR zum Review und die Arbeit geht beim
+  Container-Recycling verloren (das hat der Stop-Hook
+  `~/.claude/stop-hook-git-check.sh` in M1 zurecht angemahnt). Merge nach
+  main bleibt ein separater Schritt und erfolgt nur nach expliziter
+  Freigabe durch den Nutzer im Chat.
 
 ## Nicht-Ziele / bewusste Einschränkungen
 - Kein Empfehlungsalgorithmus (Phase 2, separates Projekt)
