@@ -146,7 +146,18 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   retry:1-Verstärkungseffekt gilt jetzt für beide) -- als bekanntes,
   akzeptiertes Risiko für M3 dokumentiert, fällt aber nur an, wenn /matchups
   tatsächlich besucht wird (nicht auf /tierlist). Keine Drosselung in dieser
-  Session, mögliche Gegenmaßnahme (Staffelung/Caching) auf M4 verschoben
+  Session, mögliche Gegenmaßnahme (Staffelung/Caching) auf M4 verschoben.
+  Live bestätigt am 2026-08-09: /matchups auf Production zeigt sichtbar
+  "429" bereits beim allerersten Call (/tournaments?game=POCKET&limit=15,
+  noch vor dem Standings-/Pairings-Fan-out) -- Rate-Limit-Budget war zu dem
+  Zeitpunkt bereits erschöpft (vermutlich durch vorherige Seitenbesuche,
+  nicht zwingend durch /matchups selbst verursacht). Fehlerzustand-UI
+  funktioniert wie vorgesehen (sichtbare Meldung inkl. Original-Fehlertext,
+  kein stiller Fail). Bestätigt zusätzlich, dass Netzwerkzugriff auf
+  play.limitlesstcg.com von Vercel/Production aus grundsätzlich funktioniert
+  (im Unterschied zur Sandbox, wo er blockiert ist) -- sobald das
+  Rate-Limit sich erholt, wäre dort ein echter Live-Check der
+  Pairings-Response-Form (siehe GATE unten) möglich
 - Archetyp-Heuristik: erledigt (M2) -- keine eigene Kategorisierung mehr
   nötig, Limitless liefert das `deck`-Feld direkt über /standings (siehe
   Architektur-Abschnitt). getDeckArchetype() reicht es nur noch durch
@@ -178,7 +189,11 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   falls falsch, steigt das Anfragevolumen deutlich über die geplante
   Verdopplung. GATE: vor Produktions-Deploy von /matchups einmal gegen die
   echte API prüfen (fetchPairings() aufrufen, Feldnamen/Rundenabdeckung/
-  Freilos-Kodierung/outcome-Kodierung gegenchecken).
+  Freilos-Kodierung/outcome-Kodierung gegenchecken). WEITERHIN OFFEN, Stand
+  2026-08-09: erster Live-Zugriffsversuch auf Production schlug mit 429
+  (Rate-Limit) bereits beim /tournaments-Call fehl, bevor überhaupt ein
+  /pairings-Call ausgeführt wurde -- Pairings-Response-Form also weiterhin
+  ungeprüft, ein erneuter Versuch nach Abklingen des Rate-Limits steht aus.
 - Deck-Icons (Tierlist) und Kartentyp-Icons (/karten) rendern als leere
   Platzhalter-Kästchen statt echter Symbole -- betrifft zwei unabhängige
   Features, vermutlich gemeinsame Ursache (Icon-Font/Sprite fehlt oder
