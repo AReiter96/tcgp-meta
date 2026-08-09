@@ -1,6 +1,7 @@
 import {
   LIMITLESS_API_BASE,
   type LimitlessGame,
+  type LimitlessPairing,
   type LimitlessRateLimitInfo,
   type LimitlessStanding,
   type LimitlessTournament,
@@ -88,5 +89,13 @@ export async function fetchStandings(
 ): Promise<LimitlessStanding[]> {
   return limitlessFetch<LimitlessStanding[]>(
     `/tournaments/${tournamentId}/standings`,
+  )
+}
+
+export async function fetchPairings(
+  tournamentId: string,
+): Promise<LimitlessPairing[]> {
+  return limitlessFetch<LimitlessPairing[]>(
+    `/tournaments/${tournamentId}/pairings`,
   )
 }

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   fetchGames,
+  fetchPairings,
   fetchStandings,
   fetchTournaments,
   getLimitlessRateLimitInfo,
@@ -8,6 +9,7 @@ import {
 import {
   pocketGameFixture,
   pikachuDeckStandingFixture,
+  pikachuVsMewtwoPairingFixture,
   tournamentFixture,
 } from '../../test/fixtures/limitless'
 
@@ -74,6 +76,19 @@ describe('limitless client', () => {
       'https://play.limitlesstcg.com/api/tournaments/tour-1/standings',
     )
     expect(standings).toEqual([pikachuDeckStandingFixture])
+  })
+
+  it('fetches pairings for a tournament id', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse([pikachuVsMewtwoPairingFixture]),
+    )
+
+    const pairings = await fetchPairings('tour-1')
+
+    expect(fetch).toHaveBeenCalledWith(
+      'https://play.limitlesstcg.com/api/tournaments/tour-1/pairings',
+    )
+    expect(pairings).toEqual([pikachuVsMewtwoPairingFixture])
   })
 
   it('throws a descriptive error on a non-ok response', async () => {
