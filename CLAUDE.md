@@ -69,6 +69,12 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   `~/.claude/stop-hook-git-check.sh` in M1 zurecht angemahnt). Merge nach
   main bleibt ein separater Schritt und erfolgt nur nach expliziter
   Freigabe durch den Nutzer im Chat.
+- Merge-Freigabe: Claude Code darf PRs eigenständig nach main mergen, sobald
+  alle Required-Checks gruen sind und keine offenen Review-Kommentare
+  bestehen (ab M3). AUSNAHME: Merges, die ein bestehendes GATE aufloesen
+  oder den M5-Legal-Platzhalter beruehren, werden weiterhin im Chat
+  gemeldet, bevor gemergt wird -- dort ist bewusste menschliche Pruefung
+  wichtiger als reine gruene Checks.
 
 ## Nicht-Ziele / bewusste Einschränkungen
 - Kein Empfehlungsalgorithmus (Phase 2, separates Projekt)
@@ -115,27 +121,20 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   Architektur-Abschnitt). getDeckArchetype() reicht es nur noch durch
 - Impressum/Datenschutz vorerst Platzhalter -- GATE: kein Produktions-Deploy
   vor Ersetzung durch echte Texte
-- TCGdex-Client (M1) wurde in einer Sandbox mit Netzwerk-Egress-Sperre auf
-  api.tcgdex.net gebaut -- Typen/Endpunkte sind ueber das offizielle
-  `@tcgdex/sdk`-Package (npm) verifiziert, ein echter Live-Smoke-Test gegen
-  die API war in der Session aber nicht moeglich. GATE: vor Produktions-Deploy
-  /karten einmal gegen die echte API pruefen (z.B. lokal oder im
-  Vercel-Preview)
-- Limitless-Client (M2) wurde ebenfalls in einer Sandbox mit Netzwerk-
-  Egress-Sperre gebaut (play.limitlesstcg.com/docs.limitlesstcg.com: 403 auf
-  CONNECT-Tunnel) -- gegen den in der Session dokumentierten/verifizierten
-  API-Spec entwickelt, aber drei Annahmen daraus sind NICHT gegen eine echte
-  Response geprüft: (1) `POCKET` als Game-ID für TCG Pocket (aus der
-  URL-Konvention abgeleitet, siehe src/lib/limitless/types.ts), (2) die
-  tatsächlichen Namen der Rate-Limit-Response-Header (deshalb case-
-  insensitive/mehrere Kandidaten statt eines hart angenommenen Namens), (3)
-  ob/wie /tournaments "abgeschlossene" Turniere signalisiert -- die
-  dokumentierten Felder (id, game, format, name, date, players) enthalten
-  kein `status`-Feld; die App nimmt aktuell einfach die letzten N Turniere
-  in Standard-Reihenfolge. GATE: vor Produktions-Deploy einmal gegen die
-  echte API prüfen -- fetchGames() aufrufen und `POCKET`/`metagame:true`
-  gegenchecken, eine echte /tournaments- und /standings-Response auf
-  Status-/Datums-Semantik und tatsächliche Header-Namen sichten
+- TCGdex-Client (M1): GATE erledigt -- /karten live auf Production geprüft,
+  Kartendaten laden korrekt vor M2.
+- Limitless-Client (M2): GATE teilweise erledigt -- am 2026-08-09 live auf
+  Production geprüft: (1) POCKET als Game-ID bestätigt korrekt, sinnvolle
+  Archetyp-Namen/-Verteilung sichtbar. (3) Turnier-Auswahl wirkt sinnvoll,
+  keine Anzeichen für unvollständige/laufende Turniere in den Top-Einträgen.
+  WEITERHIN OFFEN: (2) tatsächliche Rate-Limit-Header-Namen -- lässt sich
+  nur per Browser-DevTools prüfen, niedrige Priorität (nur Logging, kein
+  hartes Blockverhalten)
+- NEU: Deck-Icons (Tierlist) und Kartentyp-Icons (/karten) rendern als
+  leere Platzhalter-Kästchen statt echter Symbole -- betrifft zwei
+  unabhängige Features, vermutlich gemeinsame Ursache (Icon-Font/Sprite
+  fehlt oder falsch eingebunden). Gefunden am 2026-08-09 via Live-Check.
+  Zu fixen vor M3 oder als erster Punkt in Session 4.
 
 ## MCP-Server / externe Tools
 - GitHub-Connector -- Repo-Zugriff für Claude Code on the web + Cowork
