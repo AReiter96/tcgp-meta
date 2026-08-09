@@ -14,6 +14,22 @@ const RATE_LIMIT_HEADER_MAP: Record<keyof LimitlessRateLimitInfo, string[]> = {
   retryAfter: ['retry-after'],
 }
 
+/**
+ * Traegt den HTTP-Status, damit src/lib/limitless/retry.ts gezielt auf
+ * 429/5xx reagieren kann (Retry sinnvoll) statt auf z.B. 404 (Retry
+ * zwecklos) -- seit M4. Message-Format bleibt unveraendert, damit
+ * bestehende Tests (`rejects.toThrow(/429/)`) weiter gueltig bleiben.
+ */
+export class LimitlessApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'LimitlessApiError'
+    this.status = status
+  }
+}
+
 let lastRateLimitInfo: LimitlessRateLimitInfo | null = null
 
 function captureRateLimitHeaders(response: Response): void {
@@ -55,8 +71,9 @@ async function limitlessFetch<T>(path: string): Promise<T> {
   captureRateLimitHeaders(response)
 
   if (!response.ok) {
-    throw new Error(
+    throw new LimitlessApiError(
       `Limitless API: Anfrage an "${path}" fehlgeschlagen (Status ${response.status})`,
+      response.status,
     )
   }
 

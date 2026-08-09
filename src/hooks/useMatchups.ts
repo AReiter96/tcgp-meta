@@ -10,6 +10,9 @@ export function useMatchups() {
     // gleiche Begruendung wie useTierlist: welche N Turniere "aktuell" sind
     // verschiebt sich im Laufe des Tages, kuerzer als der globale 24h-Default.
     staleTime: 1000 * 60 * 60,
+    // retry:0 -- gleiche Begruendung wie useTierlist (Einzelrequest-Retry
+    // lebt jetzt in ../lib/limitless/retry.ts, kein doppelter Batch-Retry).
+    retry: 0,
   })
 
   return {

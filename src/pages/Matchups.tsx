@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react'
 import { useMatchups } from '../hooks/useMatchups'
 import { FanContentNotice } from '../components/FanContentNotice'
+import { DeckIcon } from '../components/DeckIcon'
 
 function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`
@@ -78,12 +79,7 @@ export function Matchups() {
                         className="flex items-center gap-2 text-left hover:underline"
                       >
                         {entry.archetype.icons.map((icon) => (
-                          <img
-                            key={icon}
-                            src={icon}
-                            alt=""
-                            className="h-6 w-6 rounded-full"
-                          />
+                          <DeckIcon key={icon} src={icon} />
                         ))}
                         <span>{entry.archetype.name}</span>
                       </button>
