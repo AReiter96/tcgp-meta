@@ -38,9 +38,12 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   /tournaments/{id}/standings liefert pro Spieler Platzierung, Record UND
   bereits ein fertiges `deck`-Objekt (id, name, icons) -- keine eigene
   Kategorisierung nötig (Korrektur ggü. ursprünglicher Planung, siehe
-  nächster Punkt). Kein Dexie-Cache für diese Domäne, nur TanStack Query
-  (Turnierdaten ändern sich anders als Kartendaten laufend leicht, Dexies
-  Clear-and-Replace-Modell passt hier nicht) (seit M2)
+  nächster Punkt). Bis M3 kein Dexie-Cache für diese Domäne, nur TanStack
+  Query -- seit M4 korrigiert: ein persistenter Dexie-TTL-Cache ergänzt
+  TanStack Query zusätzlich (siehe eigener Architektur-Punkt
+  "Rate-Limit-Caching" weiter unten); TanStack Query bleibt weiterhin die
+  In-Memory-Schicht fürs UI, Dexie übernimmt jetzt die
+  Rate-Limit-Schonung über Seitenbesuche/Reloads hinweg (seit M2)
 - Archetyp-Gruppierung: getDeckArchetype() (src/lib/archetype.ts) reicht das
   von Limitless bereits kategorisierte `deck`-Feld nur noch durch (Fallback
   "Unbekannt" bei fehlendem/leerem Feld) -- KEINE eigene Kartenlisten-
@@ -82,8 +85,53 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   zu lassen. Route bleibt eigenständig statt Erweiterung von /tierlist
   (Begründung: kein Regressionsrisiko für die getestete Tierlist-Seite,
   verdoppeltes Request-Volumen nur bei tatsächlichem Seitenbesuch)
+- Rate-Limit-Caching (seit M4): vier kombinierte Maßnahmen gegen das seit M2/
+  M3 bekannte 429-Risiko (siehe "Bekannte Risiken" fürs Live-Ergebnis).
+  (1) Persistenter Dexie-TTL-Cache (neue Tabelle `limitlessCache`, Dexie-
+  Version 2, src/lib/db/db.ts) für Tournaments/Standings/Pairings-Antworten
+  in src/lib/limitless/cache.ts -- TTL 1h (angelehnt an die bestehende
+  TanStack-`staleTime`-Konvention), Cache-Key ist endpunkt-/
+  turnierspezifisch (`tournaments:{game}:{limit}`, `standings:{id}`,
+  `pairings:{id}`), keine pauschale Alles-oder-nichts-Invalidierung.
+  (2) Geteilter Ladepfad: loadTierlistData() und loadMatchupData() bleiben
+  strukturell getrennt (Aggregationslogik unangetastet), importieren aber
+  beide dieselben gecachten Fetcher aus src/lib/limitless/cachedClient.ts --
+  ein Seitenbesuch (z.B. /tierlist) füllt den Cache für Tournaments/
+  Standings, ein nachfolgender Besuch der jeweils anderen Seite bekommt
+  dafür Cache-Hits statt erneuter Netzwerk-Calls (Option "geteilte
+  Cache-Schicht" statt eines gemeinsamen Hooks -- kleinerer Diff, im Chat
+  mit dem Nutzer so entschieden; dedupliziert nicht bei echt
+  gleichzeitigem Erstladen beider Seiten, das war ein bewusst akzeptierter
+  Kompromiss). (3) Gestaffeltes statt volles Promise.all-Laden bei kaltem
+  Cache: src/lib/limitless/batch.ts (`runInBatches`, Default 4er-Batches
+  mit 300ms Pause dazwischen) ersetzt den bisherigen Promise.all-Burst über
+  alle 15/30 Requests in loadTierlist.ts/loadMatchups.ts, bleibt aber pro
+  Batch fail-fast. (4) 429-Backoff auf Einzelrequest-Ebene:
+  src/lib/limitless/retry.ts (`fetchWithRetry`) nutzt den `Retry-After`-
+  Header (über getLimitlessRateLimitInfo() aus client.ts) falls vorhanden,
+  sonst steigenden Default-Backoff, und retried nur den einzelnen
+  fehlgeschlagenen Request (nicht den ganzen Batch) bei 429/5xx/
+  Netzwerkfehlern (client.ts wirft dafür jetzt `LimitlessApiError` mit
+  `status`-Feld statt eines generischen Error). Nach Ausschöpfen der
+  Retries wird der Originalfehler weitergeworfen -- der bestehende
+  sichtbare Fehlerzustand (kein stiller Teildatensatz) bleibt erhalten.
+  Der globale QueryClient-Default `retry: 1` wurde für useTierlist/
+  useMatchups auf `retry: 0` überschrieben, um die bisherige Verdopplung
+  (Einzelrequest-Retry UND Batch-Retry übereinander) zu vermeiden.
 - Offline: Dexie.js für Kartentext/-daten, Workbox für App-Shell -- Bilder
-  offline NICHT verfügbar (bewusste Einschränkung)
+  offline NICHT verfügbar (bewusste Einschränkung). Seit M4 explizite
+  Workbox-`runtimeCaching`-Konfiguration (vite.config.ts) statt impliziter
+  generateSW-Zero-Config-Defaults: App-Shell (JS/CSS/HTML) wird precached,
+  `navigateFallback` macht SPA-Routen (/tierlist, /matchups, /karten)
+  offline erreichbar. Bewusst KEIN runtimeCaching-Eintrag für
+  TCGdex-Kartenbilder (bleibt Nicht-Ziel) und KEIN Eintrag für die
+  Limitless-API (das übernimmt der Dexie-TTL-Cache oben, andere Ebene/
+  anderer Zweck: Rate-Limit-Schonung während des Betriebs statt
+  Offline-Verfügbarkeit -- ein SW-Cache würde hier ungewollt veraltete
+  Turnierdaten vorhalten). CardTile.tsx zeigt bei fehlgeschlagenem
+  Kartenbild-Laden seit M4 einen erklärenden Platzhalter (Text
+  unterscheidet offline/online via neuem useOnlineStatus-Hook) statt eines
+  kaputten Bild-Icons.
 
 ## Konventionen
 - Code-Style: ESLint + Prettier, TS strict mode
@@ -116,16 +164,15 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   tatsächlich public-facing ist (Formular verlangt begründeten Use-Case)
 
 ## Aktueller Stand
-- Letztes abgeschlossenes Feature: Bugfix Spiegel-Matchup im
-  Counter-Meta-Score (vor M4, Session vom 2026-08-09). Für Top-5-Archetypen
-  wird der eigene Spiegel-Matchup (tautologisch 50%) aus Counter-Meta-Score
-  und dessen Schwellenwert ausgeschlossen (aggregateMatchupStats() in
-  src/lib/matchups/aggregate.ts, neues Feld
-  MatchupBreakdown.isMirrorMatchup), bleibt aber in der
-  Detailaufschlüsselung sichtbar mit Hinweis-Badge "nicht im Score"
-  (Matchups.tsx). Behebt eine strukturelle Bevorzugung von Rang 1-5 ggü.
-  Rang 6-15 in der Rangliste selbst
-- Nächster Meilenstein: M4
+- Letztes abgeschlossenes Feature: M4 (Session vom 2026-08-09) -- Deck-Icon-
+  Bugfix (DeckIcon.tsx mit onError-Fallback statt kaputter Bild-Box auf
+  Tierlist/Matchups), PWA-/Offline-Polish (explizite Workbox-Strategie,
+  Offline-Hinweis auf CardTile statt kaputtem Kartenbild, neue generische
+  Platzhalter-App-Icons inkl. maskable-Variante) und Rate-Limit-Caching
+  (Dexie-TTL-Cache + geteilter Ladepfad Tierlist/Matchups + gestaffeltes
+  Laden + 429-Retry/Backoff, siehe Architektur-Abschnitt "Rate-Limit-
+  Caching"). Details siehe Checkpoint-Log-Zeile M4 unten
+- Nächster Meilenstein: M5
 - Offene Entscheidungen: keine
 
 ## Checkpoint-Log
@@ -146,30 +193,31 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   src/lib/limitless/client.ts loggt erkannte Rate-Limit-Header via
   console.info/warn, hart parsen/blocken bewusst nicht), bei wiederholtem
   Anschlagen Key-Antrag nachziehen (erst wenn Projekt public-facing genug
-  für glaubwürdigen Use-Case-Antrag ist). Seit M2 zusätzlich zu beachten:
-  loadTierlistData() lädt Standings für bis zu 15 Turniere parallel
-  (Promise.all, fail-fast) und der globale QueryClient-Default (retry: 1)
-  wiederholt bei einem einzigen fehlgeschlagenen Aufruf den gesamten Batch
-  -- erhöht das Anfragevolumen pro Fehlversuch stärker als M1s einmaliger,
-  manueller Karten-Sync. Seit M3: loadMatchupData() (/matchups-Seite) lädt
-  pro Turnier zusätzlich Pairings, verdoppelt das Anfragevolumen auf ~30
-  statt ~15 parallele Requests pro Ladevorgang (15x Standings + 15x
-  Pairings, beide weiterhin fail-fast via Promise.all, derselbe
-  retry:1-Verstärkungseffekt gilt jetzt für beide) -- als bekanntes,
-  akzeptiertes Risiko für M3 dokumentiert, fällt aber nur an, wenn /matchups
-  tatsächlich besucht wird (nicht auf /tierlist). Keine Drosselung in dieser
-  Session, mögliche Gegenmaßnahme (Staffelung/Caching) auf M4 verschoben.
-  Live bestätigt am 2026-08-09: /matchups auf Production zeigt sichtbar
-  "429" bereits beim allerersten Call (/tournaments?game=POCKET&limit=15,
-  noch vor dem Standings-/Pairings-Fan-out) -- Rate-Limit-Budget war zu dem
-  Zeitpunkt bereits erschöpft (vermutlich durch vorherige Seitenbesuche,
-  nicht zwingend durch /matchups selbst verursacht). Fehlerzustand-UI
-  funktioniert wie vorgesehen (sichtbare Meldung inkl. Original-Fehlertext,
-  kein stiller Fail). Bestätigt zusätzlich, dass Netzwerkzugriff auf
-  play.limitlesstcg.com von Vercel/Production aus grundsätzlich funktioniert
-  (im Unterschied zur Sandbox, wo er blockiert ist) -- sobald das
-  Rate-Limit sich erholt, wäre dort ein echter Live-Check der
-  Pairings-Response-Form (siehe GATE unten) möglich
+  für glaubwürdigen Use-Case-Antrag ist). ENTSCHÄRFT seit M4 (Session vom
+  2026-08-09, siehe Architektur-Abschnitt "Rate-Limit-Caching" für Details):
+  bis M3 lud loadTierlistData() bis zu 15 und loadMatchupData() bis zu 30
+  Requests in einem einzigen Promise.all-Burst, dazu verstärkte der globale
+  QueryClient-Default (retry: 1) einen einzelnen Fehlschlag zu einer
+  Wiederholung des GESAMTEN Batches. Seit M4: (1) Dexie-TTL-Cache (1h)
+  spart wiederholte Requests über Seitenbesuche/Reloads hinweg komplett
+  ein, (2) /tierlist und /matchups teilen sich denselben Cache für
+  Tournaments/Standings statt unabhängig doppelt zu laden, (3) Requests
+  laufen bei kaltem Cache gestaffelt in 4er-Batches statt als Ein-Burst,
+  (4) ein einzelner 429/5xx wird jetzt auf Einzelrequest-Ebene mit
+  Retry-After-Backoff wiederholt statt den ganzen Batch scheitern zu
+  lassen, UND der globale Batch-Retry wurde für diese beiden Hooks auf 0
+  gesetzt (kein Übereinanderstapeln von Einzelrequest- und Batch-Retry
+  mehr). Das Risiko ist dadurch kleiner, aber NICHT eliminiert -- weiterhin
+  kein API-Key, weiterhin ein Rate-Limit ohne bekannte exakte Grenze (siehe
+  GATE unten). Live-Ergebnis nach dem Fix: siehe Checkpoint-Log-Zeile M4 --
+  in M4 praezisiert: der Netzwerkblock ist laut Agent-Proxy-Status eine
+  generelle Egress-Sperre dieser Sandbox (403 auf CONNECT fuer JEDE nicht
+  freigegebene Domain), nicht spezifisch fuer play.limitlesstcg.com --
+  selbst die eigene Vercel-Preview-URL war ueber WebFetch/curl nicht
+  erreichbar. Ein echter /matchups-Neubesuch nach Abklingen des 429 konnte
+  deshalb in dieser Session nicht direkt durchgefuehrt werden -- der
+  Vercel-Preview-BUILD/-DEPLOY selbst wurde aber erfolgreich verifiziert
+  (PR-Checks gruen, Deployment-Status "Ready").
 - Archetyp-Heuristik: erledigt (M2) -- keine eigene Kategorisierung mehr
   nötig, Limitless liefert das `deck`-Feld direkt über /standings (siehe
   Architektur-Abschnitt). getDeckArchetype() reicht es nur noch durch
@@ -177,7 +225,9 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   vor Ersetzung durch echte Texte
 - TCGdex-Client (M1): GATE erledigt -- Stand 2026-08-09, /karten live auf
   Production geprüft, Kartendaten laden korrekt. Von M3 nicht berührt
-  (keine TCGdex-Änderungen), Status unverändert.
+  (keine TCGdex-Änderungen), Status unverändert. Erneut durchgegangen in M4
+  (2026-08-09): von dieser Session inhaltlich nicht berührt (kein
+  TCGdex-Code angefasst), Status weiterhin unverändert gültig.
 - Limitless-Client (M2): GATE teilweise erledigt -- Stand 2026-08-09, live
   auf Production geprüft: (1) POCKET als Game-ID bestätigt korrekt,
   sinnvolle Archetyp-Namen/-Verteilung sichtbar. (3) Turnier-Auswahl wirkt
@@ -187,7 +237,11 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   der Sandbox blockiert, 403 auf CONNECT-Tunnel, wie in M1/M2): (2)
   tatsächliche Rate-Limit-Header-Namen -- lässt sich nur per
   Browser-DevTools/Production-Check prüfen, niedrige Priorität (nur
-  Logging, kein hartes Blockverhalten).
+  Logging, kein hartes Blockverhalten). Erneut durchgegangen in M4
+  (2026-08-09): (2) weiterhin offen, gleicher Sandbox-Netzwerkblock wie
+  M1-M3, von dieser Session nicht aufgelöst (Rate-Limit-Caching in M4
+  arbeitet mit dem Header defensiv/case-insensitiv weiter, unabhängig vom
+  exakten Namen -- niedrige Priorität bleibt bestehen).
 - NEU (M3): Limitless-Pairings-Response-Form (src/lib/limitless/types.ts,
   LimitlessPairing) unverifiziert -- Stand 2026-08-09, Netzwerkzugriff auf
   play.limitlesstcg.com in der Sandbox blockiert (403 auf CONNECT-Tunnel,
@@ -206,13 +260,39 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   (Rate-Limit) bereits beim /tournaments-Call fehl, bevor überhaupt ein
   /pairings-Call ausgeführt wurde -- Pairings-Response-Form also weiterhin
   ungeprüft, ein erneuter Versuch nach Abklingen des Rate-Limits steht aus.
-- Deck-Icons (Tierlist) und Kartentyp-Icons (/karten) rendern als leere
-  Platzhalter-Kästchen statt echter Symbole -- betrifft zwei unabhängige
-  Features, vermutlich gemeinsame Ursache (Icon-Font/Sprite fehlt oder
-  falsch eingebunden). Gefunden am 2026-08-09 via Live-Check. In M3 bewusst
-  NICHT angefasst (nicht Teil des Scopes), neue Matchups-Seite übernimmt
-  dasselbe Icon-Rendering wie /tierlist inkl. Bug. Weiterhin offen, zu fixen
-  vor M4 oder als erster Punkt der nächsten Session.
+  Erneut durchgegangen in M4 (2026-08-09): weiterhin offen, von dieser
+  Session inhaltlich nicht aufgelöst (keine Pairings-Verarbeitung
+  geändert, nur die I/O-Schicht drumherum gecacht/gestaffelt/retried).
+  Live-Check-Versuch im Rahmen der M4-Verifikation: weiterhin durch die
+  generelle Sandbox-Egress-Sperre blockiert (siehe Rate-Limit-Risikopunkt
+  oben fuer Details), kein Fortschritt möglich -- unverändert offen, wie in
+  M2/M3.
+- Deck-Icons (Tierlist/Matchups): ERLEDIGT seit M4 (2026-08-09). Root Cause
+  war nicht zweifelsfrei bestimmbar (Sandbox-Egress-Sperre betrifft auch
+  play.limitlesstcg.com), Fix ist deshalb robust statt ursachenspezifisch:
+  neue DeckIcon-Komponente (src/components/DeckIcon.tsx) fängt
+  Bild-Ladefehler per onError ab und zeigt ein sichtbares Platzhalter-Icon
+  statt der kaputten Bild-Box des Browsers. Live-Verifikation auf einer
+  echten Preview-/Production-URL (nicht nur Sandbox) wie im Auftrag
+  gefordert: in dieser Session NICHT möglich, weil das Rendering von
+  Turnierdaten (und damit den Icons) überhaupt erst einen erfolgreichen
+  Limitless-API-Aufruf voraussetzt -- der ist durch dieselbe generelle
+  Egress-Sperre blockiert (403 auf CONNECT, wie in M1-M3), unabhängig vom
+  Vercel-Deploy selbst. Vercel-Preview-Build/-Deploy wurde erfolgreich
+  verifiziert (PR-Checks grün), das eigentliche Bild-Fallback-Verhalten
+  bleibt als GATE offen bis zu einem echten Browser-Check auf Production
+  (durch den Nutzer oder eine zukünftige Session mit Netzwerkzugriff).
+  WICHTIGE KORREKTUR: der ursprüngliche
+  Eintrag behauptete zusätzlich einen Kartentyp-Icon-Bug auf /karten mit
+  "vermutlich gemeinsamer Ursache" -- das stimmt nicht. Im Code existiert
+  für /karten keine Icon-Rendering-Logik überhaupt (TypeFilter.tsx ist ein
+  reines Text-`<select>`, CardTile.tsx zeigt nur Kartenbild+Text, kein
+  Icon-Element irgendwo, per Grep bestätigt). Die Doku war hier ungenau;
+  diese Session hat sich mit dem Nutzer abgestimmt auf den tatsächlich
+  existierenden Deck-Icon-Bug beschränkt statt einen Fix für nicht
+  existenten Code zu erfinden. Falls auf einer echten Seite doch einmal
+  kaputte Kartentyp-Icons auffallen sollten, ist das ein neuer Befund, kein
+  Wiederauftreten dieses Eintrags.
 
 ## MCP-Server / externe Tools
 - GitHub-Connector -- Repo-Zugriff für Claude Code on the web + Cowork
