@@ -114,6 +114,14 @@ export function Matchups() {
                               <tr key={matchup.opponent.id}>
                                 <td className="py-1 pr-2">
                                   {matchup.opponent.name}
+                                  {matchup.isMirrorMatchup && (
+                                    <span
+                                      className="ml-2 inline-block rounded-full border border-gray-300 px-1.5 py-0.5 text-[10px] text-gray-500 dark:border-gray-700 dark:text-gray-400"
+                                      title="Spiegel-Matchup: nicht im Gesamt-Score enthalten"
+                                    >
+                                      Spiegel &middot; nicht im Score
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="py-1 pr-2">
                                   {formatScore(

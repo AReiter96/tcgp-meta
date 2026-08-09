@@ -256,7 +256,7 @@ describe('aggregateMatchupStats', () => {
     expect(result.some((r) => r.archetype.id === 'deck-15')).toBe(false)
   })
 
-  it('pools mirror matches (own archetype also present in its own top-5 opponent set) instead of excluding them', () => {
+  it('pools mirror matches (own archetype also present in its own top-5 opponent set) instead of excluding them from the breakdown', () => {
     const pairings: LimitlessPairing[] = repeat(5, () =>
       pairing(deckA, deckA, 'player1'),
     )
@@ -268,12 +268,68 @@ describe('aggregateMatchupStats', () => {
     // Spiegel-Matchup: player1- und player2-Zelle sind identisch, jede
     // Pairing traegt daher sowohl einen Sieg als auch eine Niederlage in
     // dieselbe Zelle ein (siehe Doc-Comment an aggregateMatchupStats) --
-    // Winrate ist tautologisch 50%, die Daten werden aber nicht
-    // ausgeschlossen.
+    // Winrate ist tautologisch 50%, die Daten werden aber weiterhin in der
+    // Detailaufschluesselung gezeigt (isMirrorMatchup: true), nicht
+    // stillschweigend weggelassen.
     expect(vsSelf.gamesPlayed).toBe(10)
     expect(vsSelf.wins).toBe(5)
     expect(vsSelf.losses).toBe(5)
     expect(vsSelf.winratePercent).toBeCloseTo(50, 5)
+    expect(vsSelf.isMirrorMatchup).toBe(true)
+
+    // Nur der Spiegel-Gegner ist als Spiegel markiert, die uebrigen
+    // Top-5-Gegner (ohne Partien) nicht.
+    const others = a.matchups.filter((m) => m.opponent.id !== deckA.id)
+    expect(others.every((m) => m.isMirrorMatchup === false)).toBe(true)
+  })
+
+  it('excludes the mirror matchup from the Counter-Meta-Score, keeping only the non-mirror top-5 opponents', () => {
+    const pairings: LimitlessPairing[] = [
+      ...repeat(5, () => pairing(deckA, deckA, 'player1')), // Spiegel: 5 Siege, 5 Niederlagen, tautologisch 50%
+      ...repeat(5, () => pairing(deckA, deckB, 'player1')), // 5 echte Siege gegen deckB
+    ]
+
+    const result = aggregateMatchupStats(pairings, top5UsageStats)
+    const a = result.find((r) => r.archetype.id === deckA.id)!
+
+    // Ohne Spiegel-Ausschluss waeren es (5 Siege Spiegel + 5 Siege vs B) von
+    // (10 Spiegel-Spiele + 5 Spiele vs B) = 10/15 = 66.67%. Mit Ausschluss
+    // zaehlen nur die 5 Spiele gegen deckB: 5/5 = 100%.
+    expect(a.gamesPlayed).toBe(5)
+    expect(a.counterMetaScorePercent).toBeCloseTo(100, 5)
+    expect(a.counterMetaScorePercent).not.toBeCloseTo(200 / 3, 1)
+  })
+
+  it('has insufficient aggregate data when only mirror games are present, even though the raw total incl. mirror clears the threshold', () => {
+    const pairings: LimitlessPairing[] = repeat(5, () =>
+      pairing(deckA, deckA, 'player1'),
+    )
+
+    const result = aggregateMatchupStats(pairings, top5UsageStats)
+    const a = result.find((r) => r.archetype.id === deckA.id)!
+
+    // Roh-Stichprobe inkl. Spiegel waere 10 Spiele (ueber der Schwelle von
+    // 5), aber ohne die Spiegel-Spiele bleiben 0 zaehlbare Spiele uebrig.
+    expect(a.gamesPlayed).toBe(0)
+    expect(a.hasSufficientData).toBe(false)
+    expect(a.counterMetaScorePercent).toBeNull()
+  })
+
+  it('never marks a matchup as mirror for a rank 6-15 archetype, since its own archetype never appears in its own top-5 opponent set', () => {
+    const pairings: LimitlessPairing[] = [
+      ...repeat(10, () => pairing(heroDeck, deckA, 'player1')),
+      ...repeat(10, () => pairing(heroDeck, heroDeck, 'player1')),
+    ]
+    const usageStats = [...top5UsageStats, stats(heroDeck, 4)]
+
+    const result = aggregateMatchupStats(pairings, usageStats)
+    const hero = result.find((r) => r.archetype.id === heroDeck.id)!
+
+    expect(hero.matchups.every((m) => m.isMirrorMatchup === false)).toBe(true)
+    // heroDeck ist nicht in den Top-5-Gegnern, also zaehlen weiterhin nur
+    // die 10 Spiele gegen deckA (die 10 Spiele gegen sich selbst sind kein
+    // Top-5-Matchup und tauchen ueberhaupt nicht in matchups[] auf).
+    expect(hero.gamesPlayed).toBe(10)
   })
 
   it('sorts by Counter-Meta-Score descending, with insufficient-data entries last in stable usage-rate order', () => {

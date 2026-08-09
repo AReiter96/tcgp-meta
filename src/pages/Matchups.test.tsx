@@ -32,6 +32,7 @@ const pikachuMatchupStats: ArchetypeMatchupStats = {
       gamesPlayed: 20,
       winratePercent: 60,
       hasSufficientData: true,
+      isMirrorMatchup: false,
     },
     {
       opponent: { id: 'long-tail-deck', name: 'Long Tail Deck', icons: [] },
@@ -41,6 +42,7 @@ const pikachuMatchupStats: ArchetypeMatchupStats = {
       gamesPlayed: 3,
       winratePercent: null,
       hasSufficientData: false,
+      isMirrorMatchup: false,
     },
   ],
 }
@@ -147,5 +149,38 @@ describe('Matchups page', () => {
     )
     expect(screen.getByText('Long Tail Deck')).toBeInTheDocument()
     expect(screen.getAllByText('zu wenig Daten')).toHaveLength(2)
+  })
+
+  it('shows a hint badge for a mirror matchup in the breakdown, marking it as excluded from the score', () => {
+    mockedUseMatchups.mockReturnValue(
+      baseUseMatchupsResult({
+        stats: [
+          {
+            ...pikachuMatchupStats,
+            matchups: [
+              ...pikachuMatchupStats.matchups,
+              {
+                opponent: pikachuMatchupStats.archetype,
+                wins: 5,
+                losses: 5,
+                ties: 0,
+                gamesPlayed: 10,
+                winratePercent: 50,
+                hasSufficientData: true,
+                isMirrorMatchup: true,
+              },
+            ],
+          },
+        ],
+      }),
+    )
+
+    render(<Matchups />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /pikachu ex \/ zebstrika/i }),
+    )
+    expect(screen.getByText(/nicht im Score/i)).toBeInTheDocument()
+    expect(screen.queryAllByText(/nicht im Score/i)).toHaveLength(1)
   })
 })
