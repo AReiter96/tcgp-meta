@@ -1,5 +1,6 @@
 import type {
   LimitlessGame,
+  LimitlessPairing,
   LimitlessStanding,
   LimitlessTournament,
 } from '../../lib/limitless/types'
@@ -47,4 +48,11 @@ export const uncategorizedStandingFixture: LimitlessStanding = {
   placing: 3,
   deck: null,
   record: { wins: 4, losses: 3, ties: 0 },
+}
+
+export const pikachuVsMewtwoPairingFixture: LimitlessPairing = {
+  round: 1,
+  player1: { name: 'Player A', deck: pikachuDeckStandingFixture.deck },
+  player2: { name: 'Player B', deck: mewtwoDeckStandingFixture.deck },
+  outcome: 'player1',
 }

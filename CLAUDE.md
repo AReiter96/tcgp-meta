@@ -52,6 +52,27 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   eingesammelten Turniere (Summe Spieler/Siege/Niederlagen pro Archetyp),
   nicht als Durchschnitt der Einzel-Turnier-Prozentsätze -- vermeidet
   Verzerrung durch unterschiedlich große Turniere (seit M2)
+- Matchup-Aggregation/Counter-Meta-Score (src/lib/matchups/aggregate.ts,
+  seit M3): zusätzlich zu Standings wird GET /tournaments/{id}/pairings pro
+  Turnier geladen (src/lib/limitless/client.ts: fetchPairings()) und zu einer
+  gepoolten Archetyp-vs-Archetyp-Matrix aggregiert. Counter-Meta-Score =
+  gepoolte Winrate (dieselbe wins/(wins+losses+ties)-Formel wie die
+  Tierlist-Winrate) über alle Spiele gegen die aktuellen Top-5-Nutzungsrate-
+  Archetypen kombiniert, NICHT der Durchschnitt der 5 Einzelprozentsätze --
+  die geforderte Gewichtung nach tatsächlicher Gegner-Häufigkeit in der
+  Stichprobe ergibt sich dadurch automatisch aus derselben Pooling-
+  Philosophie wie M2, ohne separate Gewichtungsberechnung. "Unbekannt" ist
+  sowohl als Gegner als auch als eigene Zeile ausgeschlossen, nur die
+  Top-15-Nutzungsrate-Archetypen bekommen eine eigene Zeile (Long Tail hat
+  zu wenig Turnierdaten). Schwellenwert 5 Spiele gilt unabhängig pro
+  Einzel-Matchup UND für den Gesamt-Score ("zu wenig Daten" statt
+  Prozentzahl). Spiegel-Matchups (eigener Archetyp im eigenen Top-5-
+  Gegnerfeld) werden bewusst NICHT ausgeschlossen, sondern normal gepoolt --
+  siehe Doc-Comment in aggregate.ts zur (tautologisch 50%igen)
+  Zählweise. UI unter /matchups, eigene Route statt Erweiterung von
+  /tierlist (Begründung: kein Regressionsrisiko für die getestete
+  Tierlist-Seite, verdoppeltes Request-Volumen nur bei tatsächlichem
+  Seitenbesuch)
 - Offline: Dexie.js für Kartentext/-daten, Workbox für App-Shell -- Bilder
   offline NICHT verfügbar (bewusste Einschränkung)
 
@@ -86,12 +107,14 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   tatsächlich public-facing ist (Formular verlangt begründeten Use-Case)
 
 ## Aktueller Stand
-- Letztes abgeschlossenes Feature: M2 Meta/Tierlist (Limitless-Client via
-  eigenem `fetch`-Client, getDeckArchetype() liest Limitless' `deck`-Feld
-  durch statt eigener Heuristik, gepoolte Nutzungsrate-/Winrate-Aggregation
-  über die letzten 15 POCKET-Turniere, Tierlist-UI unter /tierlist inkl.
+- Letztes abgeschlossenes Feature: M3 Matchup-Filter/Counter-Meta-Score
+  (fetchPairings() in src/lib/limitless/client.ts, gepoolte Archetyp-vs-
+  Archetyp-Matchup-Aggregation in src/lib/matchups/aggregate.ts, Counter-
+  Meta-Score nach tatsächlicher Gegner-Häufigkeit gewichtet über die
+  Top-5-Meta-Decks, Top-15-Cutoff, 5-Spiele-Schwellenwert, UI unter
+  /matchups inkl. Aufklapp-Detailansicht pro Archetyp und
   Fan-Content-Disclaimer)
-- Nächster Meilenstein: M3
+- Nächster Meilenstein: M4
 - Offene Entscheidungen: keine
 
 ## Checkpoint-Log
@@ -115,26 +138,53 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   (Promise.all, fail-fast) und der globale QueryClient-Default (retry: 1)
   wiederholt bei einem einzigen fehlgeschlagenen Aufruf den gesamten Batch
   -- erhöht das Anfragevolumen pro Fehlversuch stärker als M1s einmaliger,
-  manueller Karten-Sync
+  manueller Karten-Sync. Seit M3: loadMatchupData() (/matchups-Seite) lädt
+  pro Turnier zusätzlich Pairings, verdoppelt das Anfragevolumen auf ~30
+  statt ~15 parallele Requests pro Ladevorgang (15x Standings + 15x
+  Pairings, beide weiterhin fail-fast via Promise.all, derselbe
+  retry:1-Verstärkungseffekt gilt jetzt für beide) -- als bekanntes,
+  akzeptiertes Risiko für M3 dokumentiert, fällt aber nur an, wenn /matchups
+  tatsächlich besucht wird (nicht auf /tierlist). Keine Drosselung in dieser
+  Session, mögliche Gegenmaßnahme (Staffelung/Caching) auf M4 verschoben
 - Archetyp-Heuristik: erledigt (M2) -- keine eigene Kategorisierung mehr
   nötig, Limitless liefert das `deck`-Feld direkt über /standings (siehe
   Architektur-Abschnitt). getDeckArchetype() reicht es nur noch durch
 - Impressum/Datenschutz vorerst Platzhalter -- GATE: kein Produktions-Deploy
   vor Ersetzung durch echte Texte
-- TCGdex-Client (M1): GATE erledigt -- /karten live auf Production geprüft,
-  Kartendaten laden korrekt vor M2.
-- Limitless-Client (M2): GATE teilweise erledigt -- am 2026-08-09 live auf
-  Production geprüft: (1) POCKET als Game-ID bestätigt korrekt, sinnvolle
-  Archetyp-Namen/-Verteilung sichtbar. (3) Turnier-Auswahl wirkt sinnvoll,
-  keine Anzeichen für unvollständige/laufende Turniere in den Top-Einträgen.
-  WEITERHIN OFFEN: (2) tatsächliche Rate-Limit-Header-Namen -- lässt sich
-  nur per Browser-DevTools prüfen, niedrige Priorität (nur Logging, kein
-  hartes Blockverhalten)
-- NEU: Deck-Icons (Tierlist) und Kartentyp-Icons (/karten) rendern als
-  leere Platzhalter-Kästchen statt echter Symbole -- betrifft zwei
-  unabhängige Features, vermutlich gemeinsame Ursache (Icon-Font/Sprite
-  fehlt oder falsch eingebunden). Gefunden am 2026-08-09 via Live-Check.
-  Zu fixen vor M3 oder als erster Punkt in Session 4.
+- TCGdex-Client (M1): GATE erledigt -- Stand 2026-08-09, /karten live auf
+  Production geprüft, Kartendaten laden korrekt. Von M3 nicht berührt
+  (keine TCGdex-Änderungen), Status unverändert.
+- Limitless-Client (M2): GATE teilweise erledigt -- Stand 2026-08-09, live
+  auf Production geprüft: (1) POCKET als Game-ID bestätigt korrekt,
+  sinnvolle Archetyp-Namen/-Verteilung sichtbar. (3) Turnier-Auswahl wirkt
+  sinnvoll, keine Anzeichen für unvollständige/laufende Turniere in den
+  Top-Einträgen. WEITERHIN OFFEN, Stand 2026-08-09 (in M3 erneut versucht,
+  weiterhin nicht möglich -- Netzwerkzugriff auf play.limitlesstcg.com in
+  der Sandbox blockiert, 403 auf CONNECT-Tunnel, wie in M1/M2): (2)
+  tatsächliche Rate-Limit-Header-Namen -- lässt sich nur per
+  Browser-DevTools/Production-Check prüfen, niedrige Priorität (nur
+  Logging, kein hartes Blockverhalten).
+- NEU (M3): Limitless-Pairings-Response-Form (src/lib/limitless/types.ts,
+  LimitlessPairing) unverifiziert -- Stand 2026-08-09, Netzwerkzugriff auf
+  play.limitlesstcg.com in der Sandbox blockiert (403 auf CONNECT-Tunnel,
+  identisch zu M1/M2), kein Live-Smoke-Test möglich. Form basiert auf
+  typischer TCG-Turniersoftware-Konvention (Swiss-Pairing pro Runde,
+  player1/player2 mit deck+name, outcome player1/player2/draw, player2:null
+  für Freilos), nicht gegen eine echte /pairings-Response geprüft.
+  Kritischster Punkt: die Annahme, dass EIN GET
+  /tournaments/{id}/pairings-Call ALLE Runden eines Turniers liefert (worauf
+  das ~30-statt-~15-Requests-Budget beruht) statt nur der aktuellen Runde --
+  falls falsch, steigt das Anfragevolumen deutlich über die geplante
+  Verdopplung. GATE: vor Produktions-Deploy von /matchups einmal gegen die
+  echte API prüfen (fetchPairings() aufrufen, Feldnamen/Rundenabdeckung/
+  Freilos-Kodierung/outcome-Kodierung gegenchecken).
+- Deck-Icons (Tierlist) und Kartentyp-Icons (/karten) rendern als leere
+  Platzhalter-Kästchen statt echter Symbole -- betrifft zwei unabhängige
+  Features, vermutlich gemeinsame Ursache (Icon-Font/Sprite fehlt oder
+  falsch eingebunden). Gefunden am 2026-08-09 via Live-Check. In M3 bewusst
+  NICHT angefasst (nicht Teil des Scopes), neue Matchups-Seite übernimmt
+  dasselbe Icon-Rendering wie /tierlist inkl. Bug. Weiterhin offen, zu fixen
+  vor M4 oder als erster Punkt der nächsten Session.
 
 ## MCP-Server / externe Tools
 - GitHub-Connector -- Repo-Zugriff für Claude Code on the web + Cowork
