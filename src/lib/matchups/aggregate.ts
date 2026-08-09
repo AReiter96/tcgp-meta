@@ -19,6 +19,13 @@ export interface MatchupBreakdown {
   gamesPlayed: number
   winratePercent: number | null
   hasSufficientData: boolean
+  /**
+   * true, wenn dieser Gegner derselbe Archetyp wie die eigene Zeile ist
+   * (Spiegel-Matchup). Wird weiterhin gepoolt/angezeigt, aber aus dem
+   * Counter-Meta-Score der eigenen Zeile ausgeschlossen -- siehe Doc-Comment
+   * an aggregateMatchupStats().
+   */
+  isMirrorMatchup: boolean
 }
 
 export interface ArchetypeMatchupStats {
@@ -95,6 +102,7 @@ function toBreakdown(
   cell: MatchupCell | undefined,
   opponent: DeckArchetype,
   minSampleSize: number,
+  isMirrorMatchup: boolean,
 ): MatchupBreakdown {
   const wins = cell?.wins ?? 0
   const losses = cell?.losses ?? 0
@@ -110,6 +118,7 @@ function toBreakdown(
     gamesPlayed,
     winratePercent: hasSufficientData ? (wins / gamesPlayed) * 100 : null,
     hasSufficientData,
+    isMirrorMatchup,
   }
 }
 
@@ -129,15 +138,23 @@ function toBreakdown(
  *
  * "Unbekannt" wird sowohl als Gegner als auch als eigene Zeile ausgeschlossen
  * -- keine sinnvoll konterbare Kategorie und wuerde durch potenziell grosse
- * Stichprobe echte Archetypen aus den Top-15 verdraengen. Spiegel-Matchups
- * (eigener Archetyp taucht auch im eigenen Top-5-Gegnerfeld auf) werden
- * bewusst NICHT ausgeschlossen, sondern normal gepoolt -- reale
- * Wettbewerbsinformation. Da player1- und player2-Zelle bei einem
- * Spiegel-Matchup dieselbe Archetyp-Paarung sind, traegt jede Pairing sowohl
- * einen Sieg als auch eine Niederlage in dieselbe Zelle ein -- die Winrate
- * ist dadurch tautologisch 50%, gamesPlayed zaehlt entsprechend 2 pro
- * realer Pairing (nicht ausgeschlossen, aber bewusst dieses Verhalten statt
- * einer beliebigen 1:1-Naeherung).
+ * Stichprobe echte Archetypen aus den Top-15 verdraengen.
+ *
+ * Spiegel-Matchups (eigener Archetyp taucht auch im eigenen Top-5-
+ * Gegnerfeld auf, moeglich fuer Rang 1-5) werden weiterhin gepoolt und in
+ * matchups[] zurueckgegeben (isMirrorMatchup: true), aber aus dem
+ * Counter-Meta-Score der eigenen Zeile UND dessen Stichproben-Schwellenwert
+ * ausgeschlossen (Score/gamesPlayed/hasSufficientData zaehlen nur die
+ * verbleibenden bis zu 4 Nicht-Spiegel-Gegner). Grund: Da player1- und
+ * player2-Zelle bei einem Spiegel-Matchup dieselbe Archetyp-Paarung sind,
+ * traegt jede Pairing sowohl einen Sieg als auch eine Niederlage in
+ * dieselbe Zelle ein -- die Winrate ist dadurch tautologisch 50%. Ohne
+ * Ausschluss bekaeme jeder Top-5-Archetyp automatisch ~1/5 seiner
+ * Score-Grundlage aus diesem strukturell neutralen 50%-Match, waehrend
+ * Rang 6-15 (nie eigener Top-5-Gegner) das nicht hat -- eine Verzerrung
+ * genau der Kennzahl, nach der sortiert wird. Frueherer Stand (M3) hat den
+ * Spiegel-Matchup bewusst ungefiltert gepoolt; das war ein dokumentierter
+ * Zwischenstand, kein Endzustand, und wird hier korrigiert.
  */
 export function aggregateMatchupStats(
   pairings: LimitlessPairing[],
@@ -170,11 +187,16 @@ export function aggregateMatchupStats(
         row?.get(opponent.archetype.id),
         opponent.archetype,
         minSampleSize,
+        opponent.archetype.id === own.archetype.id,
       ),
     )
 
-    const totalWins = matchups.reduce((sum, m) => sum + m.wins, 0)
-    const gamesPlayed = matchups.reduce((sum, m) => sum + m.gamesPlayed, 0)
+    const scoringMatchups = matchups.filter((m) => !m.isMirrorMatchup)
+    const totalWins = scoringMatchups.reduce((sum, m) => sum + m.wins, 0)
+    const gamesPlayed = scoringMatchups.reduce(
+      (sum, m) => sum + m.gamesPlayed,
+      0,
+    )
     const hasSufficientData = gamesPlayed >= minSampleSize
 
     return {

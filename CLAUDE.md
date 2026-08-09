@@ -67,12 +67,21 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   zu wenig Turnierdaten). Schwellenwert 5 Spiele gilt unabhängig pro
   Einzel-Matchup UND für den Gesamt-Score ("zu wenig Daten" statt
   Prozentzahl). Spiegel-Matchups (eigener Archetyp im eigenen Top-5-
-  Gegnerfeld) werden bewusst NICHT ausgeschlossen, sondern normal gepoolt --
-  siehe Doc-Comment in aggregate.ts zur (tautologisch 50%igen)
-  Zählweise. UI unter /matchups, eigene Route statt Erweiterung von
-  /tierlist (Begründung: kein Regressionsrisiko für die getestete
-  Tierlist-Seite, verdoppeltes Request-Volumen nur bei tatsächlichem
-  Seitenbesuch)
+  Gegnerfeld, moeglich fuer Rang 1-5) werden weiterhin gepoolt und in der
+  Detailaufschlüsselung angezeigt (MatchupBreakdown.isMirrorMatchup),
+  aber seit der Session vom 2026-08-09 aus dem Counter-Meta-Score UND
+  dessen 5-Spiele-Schwellenwert der jeweiligen Zeile ausgeschlossen (Score
+  zählt nur die verbleibenden bis zu 4 Nicht-Spiegel-Gegner) -- ohne
+  Ausschluss haette die tautologisch 50%ige Spiegel-Zelle Rang 1-5
+  strukturell gegenüber Rang 6-15 (die nie eigener Top-5-Gegner sind)
+  bevorteilt, in genau der Kennzahl, nach der sortiert wird. Der ältere
+  Stand ("bewusst nicht ausgeschlossen") war ein dokumentierter
+  Zwischenstand aus M3, kein Endzustand. UI unter /matchups zeigt den
+  ausgeschlossenen Spiegel-Matchup in der Detailansicht mit Hinweis-Badge
+  "nicht im Score" statt ihn stillschweigend weniger relevant erscheinen
+  zu lassen. Route bleibt eigenständig statt Erweiterung von /tierlist
+  (Begründung: kein Regressionsrisiko für die getestete Tierlist-Seite,
+  verdoppeltes Request-Volumen nur bei tatsächlichem Seitenbesuch)
 - Offline: Dexie.js für Kartentext/-daten, Workbox für App-Shell -- Bilder
   offline NICHT verfügbar (bewusste Einschränkung)
 
@@ -107,13 +116,15 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   tatsächlich public-facing ist (Formular verlangt begründeten Use-Case)
 
 ## Aktueller Stand
-- Letztes abgeschlossenes Feature: M3 Matchup-Filter/Counter-Meta-Score
-  (fetchPairings() in src/lib/limitless/client.ts, gepoolte Archetyp-vs-
-  Archetyp-Matchup-Aggregation in src/lib/matchups/aggregate.ts, Counter-
-  Meta-Score nach tatsächlicher Gegner-Häufigkeit gewichtet über die
-  Top-5-Meta-Decks, Top-15-Cutoff, 5-Spiele-Schwellenwert, UI unter
-  /matchups inkl. Aufklapp-Detailansicht pro Archetyp und
-  Fan-Content-Disclaimer)
+- Letztes abgeschlossenes Feature: Bugfix Spiegel-Matchup im
+  Counter-Meta-Score (vor M4, Session vom 2026-08-09). Für Top-5-Archetypen
+  wird der eigene Spiegel-Matchup (tautologisch 50%) aus Counter-Meta-Score
+  und dessen Schwellenwert ausgeschlossen (aggregateMatchupStats() in
+  src/lib/matchups/aggregate.ts, neues Feld
+  MatchupBreakdown.isMirrorMatchup), bleibt aber in der
+  Detailaufschlüsselung sichtbar mit Hinweis-Badge "nicht im Score"
+  (Matchups.tsx). Behebt eine strukturelle Bevorzugung von Rang 1-5 ggü.
+  Rang 6-15 in der Rangliste selbst
 - Nächster Meilenstein: M4
 - Offene Entscheidungen: keine
 
