@@ -1,18 +1,30 @@
-export interface Deck {
-  cards: string[]
+import type { LimitlessDeck } from './limitless/types'
+
+export interface DeckArchetype {
+  id: string
+  name: string
+  icons: string[]
+}
+
+const UNKNOWN_ARCHETYPE: DeckArchetype = {
+  id: 'unknown',
+  name: 'Unbekannt',
+  icons: [],
 }
 
 /**
- * Ordnet einen Deck-Kartensatz einem Archetyp zu.
- *
- * Bewusst austauschbare Abstraktion (M0-Stub): Diese client-seitige
- * Heuristik ist ein MVP-Kompromiss, weil die Limitless-API keinen
- * offiziellen /decks-Endpunkt ohne API-Key liefert. Die echte Heuristik
- * kommt in M2. Sobald ein Limitless-API-Key vorliegt (siehe CLAUDE.md,
- * "Bekannte Risiken"), wird diese Funktion durch einen Aufruf des
- * /decks-Endpunkts via Proxy ersetzt -- die Signatur bleibt gleich, sodass
- * der Rest der App (Aufrufer dieser Funktion) unveraendert bleibt.
+ * Liest das von Limitless bereits kategorisierte `deck`-Feld aus einem
+ * Standings-Eintrag durch. Limitless liefert die Archetyp-Zuordnung selbst
+ * (GET /tournaments/{id}/standings) -- keine eigene Kartenlisten-Heuristik
+ * noetig (Korrektur ggue. urspruenglicher M0-Planung). Fehlt `deck` oder hat
+ * keine gueltige id (null/undefined/leerer String), ist der Eintrag nicht
+ * kategorisierbar: stabiler Fallback statt Raten oder Absturz.
  */
-export function getDeckArchetype(_deck: Deck): string {
-  return 'unknown'
+export function getDeckArchetype(
+  deck: LimitlessDeck | null | undefined,
+): DeckArchetype {
+  if (!deck?.id) {
+    return UNKNOWN_ARCHETYPE
+  }
+  return { id: deck.id, name: deck.name, icons: deck.icons ?? [] }
 }
