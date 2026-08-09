@@ -210,11 +210,14 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   mehr). Das Risiko ist dadurch kleiner, aber NICHT eliminiert -- weiterhin
   kein API-Key, weiterhin ein Rate-Limit ohne bekannte exakte Grenze (siehe
   GATE unten). Live-Ergebnis nach dem Fix: siehe Checkpoint-Log-Zeile M4 --
-  Limitless-API-Zugriff ist in dieser Sandbox weiterhin blockiert (403 auf
-  CONNECT-Tunnel zu play.limitlesstcg.com, identisch zu M1-M3), ein echter
-  /matchups-Neubesuch nach Abklingen des 429 konnte deshalb in dieser
-  Session nicht direkt durchgeführt werden -- Vercel-Preview-Deploy wurde
-  aber erfolgreich verifiziert (siehe PR-Checks).
+  in M4 praezisiert: der Netzwerkblock ist laut Agent-Proxy-Status eine
+  generelle Egress-Sperre dieser Sandbox (403 auf CONNECT fuer JEDE nicht
+  freigegebene Domain), nicht spezifisch fuer play.limitlesstcg.com --
+  selbst die eigene Vercel-Preview-URL war ueber WebFetch/curl nicht
+  erreichbar. Ein echter /matchups-Neubesuch nach Abklingen des 429 konnte
+  deshalb in dieser Session nicht direkt durchgefuehrt werden -- der
+  Vercel-Preview-BUILD/-DEPLOY selbst wurde aber erfolgreich verifiziert
+  (PR-Checks gruen, Deployment-Status "Ready").
 - Archetyp-Heuristik: erledigt (M2) -- keine eigene Kategorisierung mehr
   nötig, Limitless liefert das `deck`-Feld direkt über /standings (siehe
   Architektur-Abschnitt). getDeckArchetype() reicht es nur noch durch
@@ -261,10 +264,11 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   Session inhaltlich nicht aufgelöst (keine Pairings-Verarbeitung
   geändert, nur die I/O-Schicht drumherum gecacht/gestaffelt/retried).
   Live-Check-Versuch im Rahmen der M4-Verifikation: weiterhin durch die
-  Sandbox-Netzwerksperre blockiert, kein Fortschritt möglich -- unverändert
-  offen, wie in M2/M3.
+  generelle Sandbox-Egress-Sperre blockiert (siehe Rate-Limit-Risikopunkt
+  oben fuer Details), kein Fortschritt möglich -- unverändert offen, wie in
+  M2/M3.
 - Deck-Icons (Tierlist/Matchups): ERLEDIGT seit M4 (2026-08-09). Root Cause
-  war nicht zweifelsfrei bestimmbar (Sandbox blockt weiterhin
+  war nicht zweifelsfrei bestimmbar (Sandbox-Egress-Sperre betrifft auch
   play.limitlesstcg.com), Fix ist deshalb robust statt ursachenspezifisch:
   neue DeckIcon-Komponente (src/components/DeckIcon.tsx) fängt
   Bild-Ladefehler per onError ab und zeigt ein sichtbares Platzhalter-Icon
@@ -272,8 +276,8 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   echten Preview-/Production-URL (nicht nur Sandbox) wie im Auftrag
   gefordert: in dieser Session NICHT möglich, weil das Rendering von
   Turnierdaten (und damit den Icons) überhaupt erst einen erfolgreichen
-  Limitless-API-Aufruf voraussetzt -- der ist in der Sandbox weiterhin
-  blockiert (403 auf CONNECT-Tunnel, wie in M1-M3), unabhängig vom
+  Limitless-API-Aufruf voraussetzt -- der ist durch dieselbe generelle
+  Egress-Sperre blockiert (403 auf CONNECT, wie in M1-M3), unabhängig vom
   Vercel-Deploy selbst. Vercel-Preview-Build/-Deploy wurde erfolgreich
   verifiziert (PR-Checks grün), das eigentliche Bild-Fallback-Verhalten
   bleibt als GATE offen bis zu einem echten Browser-Check auf Production
