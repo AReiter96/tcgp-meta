@@ -318,7 +318,23 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   Response liefert (Annahme, auf der das ~30-Requests-Budget beruht) statt
   nur der aktuellen/letzten Runde -- liess sich aus dem gecachten
   Einzel-Response nicht pruefen, da nicht ersichtlich ist, ob das die volle
-  Rundenzahl war.
+  Rundenzahl war. FIX LIVE BESTÄTIGT nach Merge (PR #15, 2026-08-12): nach
+  Deploy zeigt /matchups auf Production reale, unterschiedliche
+  Counter-Meta-Scores und Stichprobengrößen pro Archetyp (z.B. "Mega
+  Sharpedo ex Gyarados 57,9% / 38 Spiele", "Mega Lucario ex Lucario 52,7% /
+  207 Spiele") statt durchgängig "0 Spiele". Wichtig fürs Debugging: der
+  erste Live-Check direkt nach dem Merge zeigte noch den alten, fehlerhaften
+  Stand mit demselben JS-Bundle-Hash wie vor dem Fix -- Ursache war ein
+  bereits registrierter PWA-Service-Worker, der die alte
+  Workbox-Precache-Version weiter auslieferte, obwohl der Server (per
+  Cache-Busting-Fetch auf index.html bestätigt) bereits den neuen Build
+  auslieferte. Erst nach `serviceWorkerRegistration.unregister()` +
+  `caches.delete(...)` und Neuladen zeigte sich der korrekte neue Stand --
+  ein bei PWA-Deploys generell zu erwartendes Verhalten (Workbox
+  aktualisiert den SW erst nach einem weiteren Reload im Hintergrund),
+  keine Besonderheit dieses Fixes, aber relevant falls zukünftig ein
+  Live-Check nach einem Merge fälschlich "nichts hat sich geändert"
+  zeigt.
 - Deck-Icons (Tierlist/Matchups): ERLEDIGT seit M4 (2026-08-09). Root Cause
   war nicht zweifelsfrei bestimmbar (Sandbox-Egress-Sperre betrifft auch
   play.limitlesstcg.com), Fix ist deshalb robust statt ursachenspezifisch:
@@ -344,7 +360,22 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   existierenden Deck-Icon-Bug beschränkt statt einen Fix für nicht
   existenten Code zu erfinden. Falls auf einer echten Seite doch einmal
   kaputte Kartentyp-Icons auffallen sollten, ist das ein neuer Befund, kein
-  Wiederauftreten dieses Eintrags.
+  Wiederauftreten dieses Eintrags. LIVE-VERIFIKATION NACHGEHOLT am
+  2026-08-12 (im Rahmen der Matchup-Pairings-Debug-Session, siehe
+  Checkpoint-Log): /matchups auf echter Production-URL im Browser geprüft.
+  Der DeckIcon-Fallback selbst funktioniert wie vorgesehen -- kein kaputtes
+  Bild-Icon des Browsers, stattdessen sichtbares "?"-Platzhalter-Icon.
+  ABER: der zugrunde liegende Root Cause bleibt bestehen und ist jetzt
+  live bestätigt, nicht nur vermutet -- alle Deck-Icon-URLs (z.B.
+  `/lucario-mega`, `/hoopa`, relative Pfade ohne Host) 404en gegen die
+  eigene App-Domain statt gegen eine echte Bild-CDN-URL aufzulösen. Nicht
+  Teil dieser Session behoben (nicht angefragt, separates Thema von der
+  Pairings-Rohform), aber als GATE-Folgefund hier dokumentiert: die
+  Icon-URLs aus der Limitless-Response sind offenbar relative
+  Pfadfragmente statt vollständiger URLs und müssten vor Verwendung gegen
+  eine Basis-URL aufgelöst werden (analog zur inzwischen bekannten
+  Diskrepanz bei der Pairings-Form -- auch hier war die angenommene
+  Datenform ungeprüft).
 
 ## MCP-Server / externe Tools
 - GitHub-Connector -- Repo-Zugriff für Claude Code on the web + Cowork
