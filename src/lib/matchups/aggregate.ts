@@ -1,9 +1,7 @@
-import { getDeckArchetype, type DeckArchetype } from '../archetype'
-import type {
-  LimitlessPairing,
-  LimitlessPairingOutcome,
-} from '../limitless/types'
+import type { DeckArchetype } from '../archetype'
+import type { LimitlessPairingOutcome } from '../limitless/types'
 import type { ArchetypeStats } from '../tierlist/aggregate'
+import type { ResolvedPairing } from './resolvePairings'
 
 const UNKNOWN_ARCHETYPE_ID = 'unknown'
 
@@ -63,14 +61,15 @@ function applyOutcome(
 }
 
 /**
- * Baut die volle gepoolte Archetyp-vs-Archetyp-Matrix aus allen Pairings auf
- * (Freilose und nicht auswertbare Ergebnisse werden uebersprungen). Wird auf
- * allen in den Pairings vorkommenden Archetypen aufgebaut, bevor auf
- * Top-5/Top-15 gefiltert wird -- Daten werden vor dem Aggregieren nicht
- * verworfen, nur beim Zurueckgeben.
+ * Baut die volle gepoolte Archetyp-vs-Archetyp-Matrix aus allen bereits
+ * aufgeloesten Pairings auf (Freilose und nicht auswertbare Ergebnisse sind
+ * zu diesem Zeitpunkt schon durch resolvePairings() aussortiert, siehe dort
+ * fuer die Roh-API-Form). Wird auf allen vorkommenden Archetypen aufgebaut,
+ * bevor auf Top-5/Top-15 gefiltert wird -- Daten werden vor dem Aggregieren
+ * nicht verworfen, nur beim Zurueckgeben.
  */
 function buildMatchupMatrix(
-  pairings: LimitlessPairing[],
+  pairings: ResolvedPairing[],
 ): Map<string, Map<string, MatchupCell>> {
   const matrix = new Map<string, Map<string, MatchupCell>>()
 
@@ -83,17 +82,8 @@ function buildMatchupMatrix(
   }
 
   for (const pairing of pairings) {
-    // pairing.player2 == null faengt sowohl `null` als auch das laut
-    // Live-Fund vom 2026-08-12 tatsaechlich verwendete fehlende Feld
-    // (undefined) bei Freilosen ab -- siehe Doc-Comment an LimitlessPairing.
-    if (pairing.player2 == null || pairing.outcome === null) {
-      continue
-    }
-    const a1 = getDeckArchetype(pairing.player1.deck)
-    const a2 = getDeckArchetype(pairing.player2.deck)
-
-    const cell1 = cellFor(a1.id, a2.id)
-    const cell2 = cellFor(a2.id, a1.id)
+    const cell1 = cellFor(pairing.archetype1.id, pairing.archetype2.id)
+    const cell2 = cellFor(pairing.archetype2.id, pairing.archetype1.id)
 
     applyOutcome(cell1, cell2, pairing.outcome)
   }
@@ -160,7 +150,7 @@ function toBreakdown(
  * Zwischenstand, kein Endzustand, und wird hier korrigiert.
  */
 export function aggregateMatchupStats(
-  pairings: LimitlessPairing[],
+  pairings: ResolvedPairing[],
   usageStats: ArchetypeStats[],
   options?: {
     topOpponentCount?: number

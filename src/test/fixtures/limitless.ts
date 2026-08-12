@@ -22,6 +22,7 @@ export const tournamentFixture: LimitlessTournament = {
 
 export const pikachuDeckStandingFixture: LimitlessStanding = {
   placing: 1,
+  player: 'player-a',
   deck: {
     id: 'pikachu-ex-zebstrika',
     name: 'Pikachu ex / Zebstrika',
@@ -34,6 +35,7 @@ export const pikachuDeckStandingFixture: LimitlessStanding = {
 
 export const mewtwoDeckStandingFixture: LimitlessStanding = {
   placing: 2,
+  player: 'player-b',
   deck: {
     id: 'mewtwo-ex',
     name: 'Mewtwo ex',
@@ -46,13 +48,16 @@ export const mewtwoDeckStandingFixture: LimitlessStanding = {
 
 export const uncategorizedStandingFixture: LimitlessStanding = {
   placing: 3,
+  player: 'player-c',
   deck: null,
   record: { wins: 4, losses: 3, ties: 0 },
 }
 
 export const pikachuVsMewtwoPairingFixture: LimitlessPairing = {
   round: 1,
-  player1: { name: 'Player A', deck: pikachuDeckStandingFixture.deck },
-  player2: { name: 'Player B', deck: mewtwoDeckStandingFixture.deck },
-  outcome: 'player1',
+  phase: 1,
+  table: 1,
+  player1: pikachuDeckStandingFixture.player,
+  player2: mewtwoDeckStandingFixture.player,
+  winner: pikachuDeckStandingFixture.player,
 }

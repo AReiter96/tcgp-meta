@@ -8,6 +8,7 @@ import { POCKET_GAME_ID } from '../limitless/types'
 import { aggregateArchetypeStats } from '../tierlist/aggregate'
 import { DEFAULT_TOURNAMENT_LIMIT } from '../tierlist/loadTierlist'
 import { aggregateMatchupStats, type ArchetypeMatchupStats } from './aggregate'
+import { resolvePairings } from './resolvePairings'
 
 /**
  * Laedt Standings UND Pairings der zuletzt gelisteten POCKET-Turniere
@@ -48,7 +49,12 @@ export async function loadMatchupData(
       standings,
     })),
   )
-  const allPairings = perTournament.flatMap((t) => t.pairings)
+  // Pro Turnier gejoint (nicht turnierweit gemeinsam), da ein Username in
+  // verschiedenen Turnieren unterschiedliche Decks gespielt haben kann --
+  // siehe Doc-Comment an resolvePairings().
+  const resolvedPairings = perTournament.flatMap(({ standings, pairings }) =>
+    resolvePairings(pairings, standings),
+  )
 
-  return aggregateMatchupStats(allPairings, usageStats)
+  return aggregateMatchupStats(resolvedPairings, usageStats)
 }
