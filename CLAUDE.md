@@ -401,10 +401,12 @@ Ranked-PVP. Reine Anzeige, keine eigene Berechnung.
   pro Seite dass das gerenderte `<img src>` tatsaechlich durch
   buildDeckIconUrl aufgeloest wird -- vorher pruefte keiner dieser Tests
   das img-Element ueberhaupt). 109 Tests gesamt (vorher 105).
-  Lint/Typecheck/Test/Build lokal gruen. Live-Verifikation auf Production
-  nach Merge steht zum Zeitpunkt dieses Log-Eintrags noch aus (analog zu
-  den beiden vorherigen Fixes dieser Session -- siehe Checkpoint-Log fuer
-  das Ergebnis, sobald nachgetragen).
+  Lint/Typecheck/Test/Build lokal gruen. LIVE AUF PRODUCTION VERIFIZIERT
+  nach Merge (PR #17, 2026-08-12): auf /tierlist und /matchups zeigen alle
+  Deck-Icons echte Pokemon-Bilder (per `img.complete`/`img.naturalWidth`
+  im Browser direkt geprueft, nicht nur visuell) statt des "?"-Platzhalters
+  -- GATE damit vollstaendig geschlossen, keine offenen Punkte mehr zu
+  diesem Thema.
 
 ## MCP-Server / externe Tools
 - GitHub-Connector -- Repo-Zugriff für Claude Code on the web + Cowork
