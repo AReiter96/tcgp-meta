@@ -26,9 +26,7 @@ export const pikachuDeckStandingFixture: LimitlessStanding = {
   deck: {
     id: 'pikachu-ex-zebstrika',
     name: 'Pikachu ex / Zebstrika',
-    icons: [
-      'https://limitlesstcg.nyc3.digitaloceanspaces.com/pocket/pikachu-ex.png',
-    ],
+    icons: ['pikachu-ex'],
   },
   record: { wins: 6, losses: 1, ties: 0 },
 }
@@ -39,9 +37,7 @@ export const mewtwoDeckStandingFixture: LimitlessStanding = {
   deck: {
     id: 'mewtwo-ex',
     name: 'Mewtwo ex',
-    icons: [
-      'https://limitlesstcg.nyc3.digitaloceanspaces.com/pocket/mewtwo-ex.png',
-    ],
+    icons: ['mewtwo-ex'],
   },
   record: { wins: 5, losses: 2, ties: 0 },
 }
