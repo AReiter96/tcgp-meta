@@ -27,19 +27,28 @@ function stats(
   }
 }
 
-// b='bye': kein zweiter Spieler (player2: null). b=null: zweiter Spieler mit
-// unkategorisiertem Deck (player2.deck: null, wird zu Archetyp "Unbekannt").
+// b='bye': kein zweiter Spieler, player2-Feld explizit null. b='bye-missing':
+// kein zweiter Spieler, player2-Feld komplett fehlend (undefined) -- die
+// laut Live-Fund vom 2026-08-12 tatsaechlich von der API verwendete Kodierung.
+// b=null: zweiter Spieler mit unkategorisiertem Deck (player2.deck: null,
+// wird zu Archetyp "Unbekannt").
 function pairing(
   a: LimitlessDeck | null,
-  b: LimitlessDeck | null | 'bye',
+  b: LimitlessDeck | null | 'bye' | 'bye-missing',
   outcome: LimitlessPairingOutcome | null,
   round = 1,
 ): LimitlessPairing {
-  return {
+  const base = {
     round,
     player1: { name: 'P1', deck: a },
-    player2: b === 'bye' ? null : { name: 'P2', deck: b },
     outcome,
+  }
+  if (b === 'bye-missing') {
+    return base as LimitlessPairing
+  }
+  return {
+    ...base,
+    player2: b === 'bye' ? null : { name: 'P2', deck: b },
   }
 }
 
@@ -224,6 +233,20 @@ describe('aggregateMatchupStats', () => {
     ]
     const usageStats = [...top5UsageStats, stats(heroDeck, 4)]
 
+    const result = aggregateMatchupStats(pairings, usageStats)
+    const hero = result.find((r) => r.archetype.id === heroDeck.id)!
+
+    expect(hero.gamesPlayed).toBe(5)
+  })
+
+  it('skips bye pairings with a missing player2 field (undefined) without throwing or miscounting -- regression for the 2026-08-12 production crash', () => {
+    const pairings: LimitlessPairing[] = [
+      pairing(heroDeck, 'bye-missing', null),
+      ...repeat(5, () => pairing(heroDeck, deckA, 'player1')),
+    ]
+    const usageStats = [...top5UsageStats, stats(heroDeck, 4)]
+
+    expect(() => aggregateMatchupStats(pairings, usageStats)).not.toThrow()
     const result = aggregateMatchupStats(pairings, usageStats)
     const hero = result.find((r) => r.archetype.id === heroDeck.id)!
 
