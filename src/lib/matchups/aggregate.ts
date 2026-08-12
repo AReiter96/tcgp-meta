@@ -83,7 +83,10 @@ function buildMatchupMatrix(
   }
 
   for (const pairing of pairings) {
-    if (pairing.player2 === null || pairing.outcome === null) {
+    // pairing.player2 == null faengt sowohl `null` als auch das laut
+    // Live-Fund vom 2026-08-12 tatsaechlich verwendete fehlende Feld
+    // (undefined) bei Freilosen ab -- siehe Doc-Comment an LimitlessPairing.
+    if (pairing.player2 == null || pairing.outcome === null) {
       continue
     }
     const a1 = getDeckArchetype(pairing.player1.deck)
