@@ -1,6 +1,7 @@
 import { useTierlist } from '../hooks/useTierlist'
 import { FanContentNotice } from '../components/FanContentNotice'
 import { DeckIcon } from '../components/DeckIcon'
+import { buildDeckIconUrl } from '../lib/limitless/client'
 
 function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`
@@ -58,7 +59,7 @@ export function Tierlist() {
                 <td className="py-2 pr-2">
                   <div className="flex items-center gap-2">
                     {entry.archetype.icons.map((icon) => (
-                      <DeckIcon key={icon} src={icon} />
+                      <DeckIcon key={icon} src={buildDeckIconUrl(icon)} />
                     ))}
                     <span>{entry.archetype.name}</span>
                   </div>

@@ -1,5 +1,6 @@
 import {
   LIMITLESS_API_BASE,
+  LIMITLESS_DECK_ICON_BASE,
   type LimitlessGame,
   type LimitlessPairing,
   type LimitlessRateLimitInfo,
@@ -115,4 +116,14 @@ export async function fetchPairings(
   return limitlessFetch<LimitlessPairing[]>(
     `/tournaments/${tournamentId}/pairings`,
   )
+}
+
+/**
+ * LimitlessDeck.icons liefert nur nackte Dateinamen-Fragmente ohne Endung
+ * oder Host, siehe Doc-Comment an LIMITLESS_DECK_ICON_BASE. Reiner
+ * String-Aufbau, kein Download/Caching des Bilds selbst (analog zu
+ * buildCardImageUrl in src/lib/tcgdex/client.ts).
+ */
+export function buildDeckIconUrl(icon: string): string {
+  return `${LIMITLESS_DECK_ICON_BASE}/${icon}.png`
 }

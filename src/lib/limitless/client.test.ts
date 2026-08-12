@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  buildDeckIconUrl,
   fetchGames,
   fetchPairings,
   fetchStandings,
@@ -115,5 +116,19 @@ describe('limitless client', () => {
       limit: '60',
       remaining: '3',
     })
+  })
+})
+
+describe('buildDeckIconUrl', () => {
+  it('appends the icon fragment as a .png against the verified CDN base', () => {
+    expect(buildDeckIconUrl('lucario-mega')).toBe(
+      'https://r2.limitlesstcg.net/pokemon/gen9/lucario-mega.png',
+    )
+  })
+
+  it('does not add any transformation beyond the extension, e.g. for multi-word fragments', () => {
+    expect(buildDeckIconUrl('gouging-fire')).toBe(
+      'https://r2.limitlesstcg.net/pokemon/gen9/gouging-fire.png',
+    )
   })
 })

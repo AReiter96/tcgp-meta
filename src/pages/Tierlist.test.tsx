@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { Tierlist } from './Tierlist'
 import { useTierlist } from '../hooks/useTierlist'
+import { buildDeckIconUrl } from '../lib/limitless/client'
 import type { ArchetypeStats } from '../lib/tierlist/aggregate'
 
 vi.mock('../hooks/useTierlist', () => ({
@@ -21,7 +22,7 @@ const pikachuStats: ArchetypeStats = {
   archetype: {
     id: 'pikachu-ex-zebstrika',
     name: 'Pikachu ex / Zebstrika',
-    icons: ['https://example.com/pikachu-ex.png'],
+    icons: ['pikachu-ex'],
   },
   playerCount: 40,
   tournamentCount: 5,
@@ -81,6 +82,17 @@ describe('Tierlist page', () => {
     expect(screen.getByText('25.0%')).toBeInTheDocument()
     expect(screen.getByText('60.0%')).toBeInTheDocument()
     expect(screen.getByText(/40 Spieler in 5 Turnieren/)).toBeInTheDocument()
+  })
+
+  it('resolves a deck icon fragment to the full CDN url instead of passing it through unchanged -- regression for the broken-icon bug', () => {
+    mockedUseTierlist.mockReturnValue(
+      baseUseTierlistResult({ stats: [pikachuStats] }),
+    )
+
+    const { container } = render(<Tierlist />)
+
+    const img = container.querySelector('img')
+    expect(img).toHaveAttribute('src', buildDeckIconUrl('pikachu-ex'))
   })
 
   it('renders the fan-content disclaimer', () => {

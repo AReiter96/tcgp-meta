@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { Matchups } from './Matchups'
 import { useMatchups } from '../hooks/useMatchups'
+import { buildDeckIconUrl } from '../lib/limitless/client'
 import type { ArchetypeMatchupStats } from '../lib/matchups/aggregate'
 
 vi.mock('../hooks/useMatchups', () => ({
@@ -18,7 +19,7 @@ const pikachuMatchupStats: ArchetypeMatchupStats = {
   archetype: {
     id: 'pikachu-ex-zebstrika',
     name: 'Pikachu ex / Zebstrika',
-    icons: ['https://example.com/pikachu-ex.png'],
+    icons: ['pikachu-ex'],
   },
   gamesPlayed: 30,
   counterMetaScorePercent: 60,
@@ -97,6 +98,17 @@ describe('Matchups page', () => {
     expect(screen.getByText('Pikachu ex / Zebstrika')).toBeInTheDocument()
     expect(screen.getByText('60.0%')).toBeInTheDocument()
     expect(screen.getByText('30 Spiele')).toBeInTheDocument()
+  })
+
+  it('resolves a deck icon fragment to the full CDN url instead of passing it through unchanged -- regression for the broken-icon bug', () => {
+    mockedUseMatchups.mockReturnValue(
+      baseUseMatchupsResult({ stats: [pikachuMatchupStats] }),
+    )
+
+    const { container } = render(<Matchups />)
+
+    const img = container.querySelector('img')
+    expect(img).toHaveAttribute('src', buildDeckIconUrl('pikachu-ex'))
   })
 
   it('renders the fan-content disclaimer', () => {

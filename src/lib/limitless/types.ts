@@ -1,6 +1,19 @@
 export const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api'
 
 /**
+ * Basis-URL fuer Deck-Icon-Bilder. LimitlessDeck.icons liefert nur nackte
+ * Dateinamen-Fragmente (z.B. "lucario-mega"), keine vollen URLs -- eine
+ * Session-lang bestand die unverifizierte Annahme, es seien bereits fertige
+ * URLs (der alte Fake-Wert in den Test-Fixtures,
+ * limitlesstcg.nyc3.digitaloceanspaces.com/pocket/..., war ebenfalls nur
+ * geraten und liefert 403). Live verifiziert am 2026-08-12: die Fragmente
+ * per Browser direkt gegen play.limitlesstcg.com/decks?game=POCKET
+ * abgeglichen (dort exakt dieselben Fragment-Namen als <img src>) und
+ * GET .../furfrou.png -> 200 mit echtem PNG bestaetigt.
+ */
+export const LIMITLESS_DECK_ICON_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9'
+
+/**
  * Vermutete Game-ID fuer TCG Pocket (aus der URL-Konvention
  * play.limitlesstcg.com/tournaments?game=POCKET abgeleitet). NICHT gegen
  * eine echte /games-Response verifiziert -- die Sandbox in dieser Session
