@@ -39,6 +39,8 @@ export interface LimitlessRecord {
 
 export interface LimitlessStanding {
   placing: number
+  /** Username, identisch mit LimitlessPairing.player1/player2 -- Join-Schluessel fuer resolvePairings(). */
+  player: string
   deck: LimitlessDeck | null
   record: LimitlessRecord
 }
@@ -58,37 +60,39 @@ export interface LimitlessRateLimitInfo {
 
 export type LimitlessPairingOutcome = 'player1' | 'player2' | 'draw'
 
-export interface LimitlessPairingPlayer {
-  name: string
-  deck: LimitlessDeck | null
-}
-
 /**
- * GATE (teilweise verifiziert, Live-Fund vom 2026-08-12): Punkt (3) der
- * urspruenglichen Annahmen war falsch -- ein Freilos (Bye) liefert
- * `player2` als FEHLENDES Feld (`undefined`), nicht als `player2: null` wie
- * bis M4 angenommen. Live-Fehler auf Production (`can't access property
- * "deck", t.player2 is undefined`) auf /matchups belegt das; response.json()
- * validiert die Form nicht zur Laufzeit, der TS-Typ war bis dahin reine
- * Annahme ohne echten Response-Abgleich. player2 deshalb seit diesem Fix als
- * optional typisiert und in aggregate.ts sowohl auf `null` als auch
- * `undefined` geprueft. Die uebrigen drei Punkte bleiben unverifiziert: (1)
- * ob GET /tournaments/{id}/pairings wirklich ALLE Runden in einer Response
- * liefert (Annahme, auf der das Budget von einem Request pro Turnier
- * beruht) statt nur der aktuellen/letzten Runde, (2) exakte Feldnamen
- * ausserhalb von player2, (4) Kodierung von "outcome". Vor
- * Produktions-Deploy weiter pruefen (siehe CLAUDE.md "Bekannte Risiken").
+ * GATE-Historie: Die urspruengliche Form (seit M3) nahm player1/player2 als
+ * {name, deck}-Objekte mit eingebettetem Deck und ein separates
+ * outcome-Feld an -- spekuliert nach typischer TCG-Turniersoftware-
+ * Konvention, nie gegen die echte API geprueft. Ein erster Live-Fund
+ * (2026-08-12, Production-Crash auf /matchups) deckte auf, dass ein Freilos
+ * `player2` komplett weglaesst statt `null` zu senden. Eine anschliessende
+ * Live-Inspektion des Production-IndexedDB-Caches (echte /pairings-Response,
+ * 2026-08-12) zeigte: die GESAMTE urspruengliche Annahme war falsch, nicht
+ * nur die Freilos-Kodierung. Tatsaechliche Form:
+ * - player1/player2 sind Username-STRINGS (identisch mit
+ *   LimitlessStanding.player), OHNE eingebettetes Deck -- das Deck muss ueber
+ *   den Username gegen die Standings desselben Turniers gejoint werden
+ *   (siehe src/lib/matchups/resolvePairings.ts)
+ * - kein `outcome`-Feld. Stattdessen `winner`: Username-String des
+ *   Gewinners, `0` = Unentschieden, `-1` = Freilos/kein Ergebnis (player2
+ *   fehlt dann zusaetzlich als Feld komplett)
+ * - `phase`/`table`/optionales `match` (z.B. "T4-2" in Top-Cut-Runden,
+ *   phase 2) sind vorhanden, werden aber nicht ausgewertet
+ * Weiterhin unverifiziert: ob GET /tournaments/{id}/pairings wirklich ALLE
+ * Runden eines Turniers in einer Response liefert (Annahme, auf der das
+ * Budget von einem Request pro Turnier beruht) statt nur der aktuellen/
+ * letzten Runde.
  */
 export interface LimitlessPairing {
   round: number
-  player1: LimitlessPairingPlayer
-  /**
-   * Freilos (Bye) = kein zweiter Spieler, kein verwertbares Ergebnis.
-   * Live bestaetigt als fehlendes Feld (undefined), `null` wird defensiv
-   * ebenfalls weiterhin akzeptiert falls die API das Feld doch mal explizit
-   * mitschickt.
-   */
-  player2?: LimitlessPairingPlayer | null
-  /** null = Ergebnis nicht auswertbar */
-  outcome: LimitlessPairingOutcome | null
+  phase: number
+  table: number | null
+  /** Nur in Top-Cut-Runden (phase 2) vorhanden, z.B. "T4-2". Nicht ausgewertet. */
+  match?: string
+  player1: string
+  /** Fehlt komplett (kein `null`) bei einem Freilos (Bye). */
+  player2?: string
+  /** Username des Gewinners, 0 = Unentschieden, -1 = Freilos/kein Ergebnis. */
+  winner: string | 0 | -1
 }

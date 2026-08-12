@@ -20,7 +20,7 @@ function standing(
   losses: number,
   ties = 0,
 ): LimitlessStanding {
-  return { placing: 1, deck, record: { wins, losses, ties } }
+  return { placing: 1, player: 'player', deck, record: { wins, losses, ties } }
 }
 
 // t1: 1 Spieler (nur Pikachu). t2: 5 Spieler (3x Pikachu, 1x Mewtwo,

@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { aggregateMatchupStats, MIN_MATCHUP_SAMPLE_SIZE } from './aggregate'
+import { getDeckArchetype } from '../archetype'
 import type { ArchetypeStats } from '../tierlist/aggregate'
-import type {
-  LimitlessDeck,
-  LimitlessPairing,
-  LimitlessPairingOutcome,
-} from '../limitless/types'
+import type { LimitlessDeck, LimitlessPairingOutcome } from '../limitless/types'
+import type { ResolvedPairing } from './resolvePairings'
 
 function deck(id: string): LimitlessDeck {
   return { id, name: id, icons: [] }
@@ -27,28 +25,19 @@ function stats(
   }
 }
 
-// b='bye': kein zweiter Spieler, player2-Feld explizit null. b='bye-missing':
-// kein zweiter Spieler, player2-Feld komplett fehlend (undefined) -- die
-// laut Live-Fund vom 2026-08-12 tatsaechlich von der API verwendete Kodierung.
-// b=null: zweiter Spieler mit unkategorisiertem Deck (player2.deck: null,
-// wird zu Archetyp "Unbekannt").
+// aggregateMatchupStats() operiert auf bereits aufgeloesten Pairings (siehe
+// ResolvedPairing/resolvePairings.ts) -- Freilos-/Gewinner-Kodierung der
+// Limitless-Rohform wird dort separat getestet (resolvePairings.test.ts).
+// b=null: Gegner mit unkategorisiertem Deck (wird zu Archetyp "Unbekannt").
 function pairing(
   a: LimitlessDeck | null,
-  b: LimitlessDeck | null | 'bye' | 'bye-missing',
-  outcome: LimitlessPairingOutcome | null,
-  round = 1,
-): LimitlessPairing {
-  const base = {
-    round,
-    player1: { name: 'P1', deck: a },
-    outcome,
-  }
-  if (b === 'bye-missing') {
-    return base as LimitlessPairing
-  }
+  b: LimitlessDeck | null,
+  outcome: LimitlessPairingOutcome,
+): ResolvedPairing {
   return {
-    ...base,
-    player2: b === 'bye' ? null : { name: 'P2', deck: b },
+    archetype1: getDeckArchetype(a),
+    archetype2: getDeckArchetype(b),
+    outcome,
   }
 }
 
@@ -75,7 +64,7 @@ const top5UsageStats: ArchetypeStats[] = [
 
 describe('aggregateMatchupStats', () => {
   it('pools wins/losses/ties across multiple pairings into one matchup cell', () => {
-    const pairings: LimitlessPairing[] = [
+    const pairings: ResolvedPairing[] = [
       pairing(heroDeck, deckA, 'player1'),
       pairing(heroDeck, deckA, 'player1'),
       pairing(heroDeck, deckA, 'player2'),
@@ -94,7 +83,7 @@ describe('aggregateMatchupStats', () => {
   })
 
   it('weights the Counter-Meta-Score by actual opponent frequency, not an unweighted average of the 5 matchup percentages', () => {
-    const pairings: LimitlessPairing[] = [
+    const pairings: ResolvedPairing[] = [
       ...repeat(18, () => pairing(heroDeck, deckA, 'player1')),
       ...repeat(2, () => pairing(heroDeck, deckA, 'player2')),
       ...repeat(1, () => pairing(heroDeck, deckB, 'player1')),
@@ -112,7 +101,7 @@ describe('aggregateMatchupStats', () => {
   })
 
   it('flags a below-threshold individual matchup as insufficient but still counts its games in the aggregate score', () => {
-    const pairings: LimitlessPairing[] = [
+    const pairings: ResolvedPairing[] = [
       ...repeat(3, () => pairing(heroDeck, deckA, 'player1')),
       ...repeat(5, () => pairing(heroDeck, deckB, 'player1')),
     ]
@@ -133,7 +122,7 @@ describe('aggregateMatchupStats', () => {
   })
 
   it('per-matchup threshold: exactly 4 games is insufficient, exactly 5 is not', () => {
-    const pairings: LimitlessPairing[] = [
+    const pairings: ResolvedPairing[] = [
       ...repeat(4, () => pairing(heroDeck, deckA, 'player1')),
       ...repeat(5, () => pairing(heroDeck, deckB, 'player1')),
     ]
@@ -177,7 +166,7 @@ describe('aggregateMatchupStats', () => {
   })
 
   it('only considers the top-5 usage-rate archetypes as opponents, ignoring games against rank 6+', () => {
-    const pairings: LimitlessPairing[] = [
+    const pairings: ResolvedPairing[] = [
       ...repeat(10, () => pairing(heroDeck, deckA, 'player1')),
       ...repeat(10, () => pairing(heroDeck, deckF, 'player2')),
     ]
@@ -202,7 +191,7 @@ describe('aggregateMatchupStats', () => {
       stats(deckE, 5),
       stats(heroDeck, 2),
     ]
-    const pairings: LimitlessPairing[] = [
+    const pairings: ResolvedPairing[] = [
       ...repeat(10, () => pairing(heroDeck, deckA, 'player1')),
       ...repeat(20, () => pairing(heroDeck, null, 'player2')), // Gegner mit unkategorisiertem Deck
     ]
@@ -216,7 +205,7 @@ describe('aggregateMatchupStats', () => {
   })
 
   it('never returns "Unbekannt" as an own-deck row, even with a large sample', () => {
-    const pairings: LimitlessPairing[] = repeat(20, () =>
+    const pairings: ResolvedPairing[] = repeat(20, () =>
       pairing(null, deckA, 'player2'),
     )
     const usageStats = [stats(unknownArchetypeDeck, 40), ...top5UsageStats]
@@ -226,50 +215,10 @@ describe('aggregateMatchupStats', () => {
     expect(result.some((r) => r.archetype.id === 'unknown')).toBe(false)
   })
 
-  it('skips bye pairings (player2: null) without throwing or miscounting', () => {
-    const pairings: LimitlessPairing[] = [
-      pairing(heroDeck, 'bye', null),
-      ...repeat(5, () => pairing(heroDeck, deckA, 'player1')),
-    ]
-    const usageStats = [...top5UsageStats, stats(heroDeck, 4)]
-
-    const result = aggregateMatchupStats(pairings, usageStats)
-    const hero = result.find((r) => r.archetype.id === heroDeck.id)!
-
-    expect(hero.gamesPlayed).toBe(5)
-  })
-
-  it('skips bye pairings with a missing player2 field (undefined) without throwing or miscounting -- regression for the 2026-08-12 production crash', () => {
-    const pairings: LimitlessPairing[] = [
-      pairing(heroDeck, 'bye-missing', null),
-      ...repeat(5, () => pairing(heroDeck, deckA, 'player1')),
-    ]
-    const usageStats = [...top5UsageStats, stats(heroDeck, 4)]
-
-    expect(() => aggregateMatchupStats(pairings, usageStats)).not.toThrow()
-    const result = aggregateMatchupStats(pairings, usageStats)
-    const hero = result.find((r) => r.archetype.id === heroDeck.id)!
-
-    expect(hero.gamesPlayed).toBe(5)
-  })
-
-  it('skips pairings with outcome: null without throwing or miscounting', () => {
-    const pairings: LimitlessPairing[] = [
-      pairing(heroDeck, deckA, null),
-      ...repeat(5, () => pairing(heroDeck, deckA, 'player1')),
-    ]
-    const usageStats = [...top5UsageStats, stats(heroDeck, 4)]
-
-    const result = aggregateMatchupStats(pairings, usageStats)
-    const hero = result.find((r) => r.archetype.id === heroDeck.id)!
-
-    expect(hero.gamesPlayed).toBe(5)
-  })
-
   it('limits own-deck rows to the top 15 by usage rate', () => {
     const decks = Array.from({ length: 16 }, (_, i) => deck(`deck-${i}`))
     const usageStats = decks.map((d, i) => stats(d, 100 - i))
-    const pairings: LimitlessPairing[] = decks.flatMap((d, i) =>
+    const pairings: ResolvedPairing[] = decks.flatMap((d, i) =>
       repeat(5, () => pairing(d, decks[(i + 1) % decks.length], 'player1')),
     )
 
@@ -280,7 +229,7 @@ describe('aggregateMatchupStats', () => {
   })
 
   it('pools mirror matches (own archetype also present in its own top-5 opponent set) instead of excluding them from the breakdown', () => {
-    const pairings: LimitlessPairing[] = repeat(5, () =>
+    const pairings: ResolvedPairing[] = repeat(5, () =>
       pairing(deckA, deckA, 'player1'),
     )
 
@@ -307,7 +256,7 @@ describe('aggregateMatchupStats', () => {
   })
 
   it('excludes the mirror matchup from the Counter-Meta-Score, keeping only the non-mirror top-5 opponents', () => {
-    const pairings: LimitlessPairing[] = [
+    const pairings: ResolvedPairing[] = [
       ...repeat(5, () => pairing(deckA, deckA, 'player1')), // Spiegel: 5 Siege, 5 Niederlagen, tautologisch 50%
       ...repeat(5, () => pairing(deckA, deckB, 'player1')), // 5 echte Siege gegen deckB
     ]
@@ -324,7 +273,7 @@ describe('aggregateMatchupStats', () => {
   })
 
   it('has insufficient aggregate data when only mirror games are present, even though the raw total incl. mirror clears the threshold', () => {
-    const pairings: LimitlessPairing[] = repeat(5, () =>
+    const pairings: ResolvedPairing[] = repeat(5, () =>
       pairing(deckA, deckA, 'player1'),
     )
 
@@ -339,7 +288,7 @@ describe('aggregateMatchupStats', () => {
   })
 
   it('never marks a matchup as mirror for a rank 6-15 archetype, since its own archetype never appears in its own top-5 opponent set', () => {
-    const pairings: LimitlessPairing[] = [
+    const pairings: ResolvedPairing[] = [
       ...repeat(10, () => pairing(heroDeck, deckA, 'player1')),
       ...repeat(10, () => pairing(heroDeck, heroDeck, 'player1')),
     ]
@@ -365,7 +314,7 @@ describe('aggregateMatchupStats', () => {
       stats(heroMid, 3),
       stats(heroNone, 2),
     ]
-    const pairings: LimitlessPairing[] = [
+    const pairings: ResolvedPairing[] = [
       ...repeat(5, () => pairing(heroHigh, deckA, 'player1')), // 100%
       ...repeat(3, () => pairing(heroMid, deckB, 'player1')),
       ...repeat(2, () => pairing(heroMid, deckB, 'player2')), // 60%
