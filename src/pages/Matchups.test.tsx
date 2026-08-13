@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { Matchups } from './Matchups'
 import { useMatchups } from '../hooks/useMatchups'
 import { buildDeckIconUrl } from '../lib/limitless/client'
@@ -53,6 +53,8 @@ function baseUseMatchupsResult(
 ) {
   return {
     stats: [],
+    meta: undefined,
+    updatedAt: undefined,
     isLoading: false,
     isError: false,
     error: null,
@@ -88,16 +90,20 @@ describe('Matchups page', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/nicht erreichbar/i)
   })
 
-  it('renders aggregated Counter-Meta-Score rows', () => {
+  it('renders aggregated Counter-Meta-Score rows with every opponent matchup visible directly', () => {
     mockedUseMatchups.mockReturnValue(
       baseUseMatchupsResult({ stats: [pikachuMatchupStats] }),
     )
 
     render(<Matchups />)
 
-    expect(screen.getByText('Pikachu ex / Zebstrika')).toBeInTheDocument()
-    expect(screen.getByText('60.0%')).toBeInTheDocument()
-    expect(screen.getByText('30 Spiele')).toBeInTheDocument()
+    expect(screen.getAllByText('Pikachu ex / Zebstrika').length).toBeGreaterThan(
+      0,
+    )
+    expect(screen.getAllByText('60.0').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('30 Spiele').length).toBeGreaterThan(0)
+    // Opponent breakdown is always visible -- no expand/collapse anymore.
+    expect(screen.getAllByText('Mewtwo ex').length).toBeGreaterThan(0)
   })
 
   it('resolves a deck icon fragment to the full CDN url instead of passing it through unchanged -- regression for the broken-icon bug', () => {
@@ -119,27 +125,7 @@ describe('Matchups page', () => {
     expect(screen.getByText(/inoffizielle fan-anwendung/i)).toBeInTheDocument()
   })
 
-  it('expands the matchup breakdown on click and collapses it again on a second click', () => {
-    mockedUseMatchups.mockReturnValue(
-      baseUseMatchupsResult({ stats: [pikachuMatchupStats] }),
-    )
-
-    render(<Matchups />)
-
-    expect(screen.queryByText('Mewtwo ex')).not.toBeInTheDocument()
-
-    fireEvent.click(
-      screen.getByRole('button', { name: /pikachu ex \/ zebstrika/i }),
-    )
-    expect(screen.getByText('Mewtwo ex')).toBeInTheDocument()
-
-    fireEvent.click(
-      screen.getByRole('button', { name: /pikachu ex \/ zebstrika/i }),
-    )
-    expect(screen.queryByText('Mewtwo ex')).not.toBeInTheDocument()
-  })
-
-  it('shows "zu wenig Daten" instead of a percentage at both the row and matchup-breakdown level', () => {
+  it('shows a compact insufficient-data marker instead of a percentage for both the score and the matchup cell', () => {
     mockedUseMatchups.mockReturnValue(
       baseUseMatchupsResult({
         stats: [
@@ -154,16 +140,13 @@ describe('Matchups page', () => {
 
     render(<Matchups />)
 
-    expect(screen.getAllByText('zu wenig Daten')[0]).toBeInTheDocument()
-
-    fireEvent.click(
-      screen.getByRole('button', { name: /pikachu ex \/ zebstrika/i }),
-    )
-    expect(screen.getByText('Long Tail Deck')).toBeInTheDocument()
-    expect(screen.getAllByText('zu wenig Daten')).toHaveLength(2)
+    // Score cells (desktop + mobile) render '–' for an insufficient sample.
+    expect(screen.getAllByText('–').length).toBeGreaterThan(0)
+    // The individual matchup with < 5 games renders its sample size.
+    expect(screen.getAllByText('n=3').length).toBeGreaterThan(0)
   })
 
-  it('shows a hint badge for a mirror matchup in the breakdown, marking it as excluded from the score', () => {
+  it('marks a mirror matchup cell as excluded from the score', () => {
     mockedUseMatchups.mockReturnValue(
       baseUseMatchupsResult({
         stats: [
@@ -189,10 +172,11 @@ describe('Matchups page', () => {
 
     render(<Matchups />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /pikachu ex \/ zebstrika/i }),
+    const mirrorCells = screen.getAllByText('SPIEGEL')
+    expect(mirrorCells.length).toBeGreaterThan(0)
+    expect(mirrorCells[0]).toHaveAttribute(
+      'title',
+      'Spiegel-Matchup: nicht im Gesamt-Score enthalten',
     )
-    expect(screen.getByText(/nicht im Score/i)).toBeInTheDocument()
-    expect(screen.queryAllByText(/nicht im Score/i)).toHaveLength(1)
   })
 })

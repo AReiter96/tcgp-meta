@@ -38,6 +38,8 @@ function baseUseTierlistResult(
 ) {
   return {
     stats: [],
+    meta: undefined,
+    updatedAt: undefined,
     isLoading: false,
     isError: false,
     error: null,
@@ -81,7 +83,7 @@ describe('Tierlist page', () => {
     expect(screen.getByText('Pikachu ex / Zebstrika')).toBeInTheDocument()
     expect(screen.getByText('25.0%')).toBeInTheDocument()
     expect(screen.getByText('60.0%')).toBeInTheDocument()
-    expect(screen.getByText(/40 Spieler in 5 Turnieren/)).toBeInTheDocument()
+    expect(screen.getByText(/40 Spieler · 5 Turniere/)).toBeInTheDocument()
   })
 
   it('resolves a deck icon fragment to the full CDN url instead of passing it through unchanged -- regression for the broken-icon bug', () => {

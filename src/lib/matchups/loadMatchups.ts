@@ -6,9 +6,17 @@ import {
 import { runInBatches } from '../limitless/batch'
 import { POCKET_GAME_ID } from '../limitless/types'
 import { aggregateArchetypeStats } from '../tierlist/aggregate'
-import { DEFAULT_TOURNAMENT_LIMIT } from '../tierlist/loadTierlist'
+import {
+  DEFAULT_TOURNAMENT_LIMIT,
+  type TierlistMeta,
+} from '../tierlist/loadTierlist'
 import { aggregateMatchupStats, type ArchetypeMatchupStats } from './aggregate'
 import { resolvePairings } from './resolvePairings'
+
+export interface MatchupData {
+  stats: ArchetypeMatchupStats[]
+  meta: TierlistMeta
+}
 
 /**
  * Laedt Standings UND Pairings der zuletzt gelisteten POCKET-Turniere
@@ -29,7 +37,7 @@ import { resolvePairings } from './resolvePairings'
  */
 export async function loadMatchupData(
   limit: number = DEFAULT_TOURNAMENT_LIMIT,
-): Promise<ArchetypeMatchupStats[]> {
+): Promise<MatchupData> {
   const tournaments = await fetchTournamentsCached({
     game: POCKET_GAME_ID,
     limit,
@@ -56,5 +64,11 @@ export async function loadMatchupData(
     resolvePairings(pairings, standings),
   )
 
-  return aggregateMatchupStats(resolvedPairings, usageStats)
+  return {
+    stats: aggregateMatchupStats(resolvedPairings, usageStats),
+    meta: {
+      tournamentCount: tournaments.length,
+      totalPlayers: tournaments.reduce((sum, t) => sum + t.players, 0),
+    },
+  }
 }

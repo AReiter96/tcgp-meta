@@ -40,7 +40,7 @@ describe('loadMatchupData', () => {
     ])
     mockedFetchPairingsCached.mockResolvedValue([pikachuVsMewtwoPairingFixture])
 
-    const stats = await loadMatchupData()
+    const { stats, meta } = await loadMatchupData()
 
     expect(mockedFetchTournamentsCached).toHaveBeenCalledWith({
       game: POCKET_GAME_ID,
@@ -51,6 +51,10 @@ describe('loadMatchupData', () => {
     )
     expect(mockedFetchPairingsCached).toHaveBeenCalledWith(tournamentFixture.id)
     expect(stats.length).toBeGreaterThan(0)
+    expect(meta).toEqual({
+      tournamentCount: 1,
+      totalPlayers: tournamentFixture.players,
+    })
   })
 
   it('propagates a failure instead of silently returning partial data', async () => {

@@ -6,18 +6,49 @@ interface TypeFilterProps {
 
 export function TypeFilter({ types, value, onChange }: TypeFilterProps) {
   return (
-    <select
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
+    <div
+      role="group"
       aria-label="Nach Typ filtern"
-      className="rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+      className="flex gap-1.5 overflow-x-auto"
     >
-      <option value="">Alle Typen</option>
+      <TypeChip
+        label="ALLE"
+        active={value === ''}
+        onClick={() => onChange('')}
+      />
       {types.map((type) => (
-        <option key={type} value={type}>
-          {type}
-        </option>
+        <TypeChip
+          key={type}
+          label={type}
+          active={value === type}
+          onClick={() => onChange(type)}
+        />
       ))}
-    </select>
+    </div>
+  )
+}
+
+function TypeChip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex-none px-2.5 py-1.5 font-mono text-[11px] tracking-[0.06em] uppercase ${
+        active
+          ? 'bg-accent text-accent-ink'
+          : 'border border-line-strong text-text-dim hover:text-text'
+      }`}
+    >
+      {label}
+    </button>
   )
 }

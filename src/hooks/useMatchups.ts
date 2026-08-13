@@ -16,7 +16,9 @@ export function useMatchups() {
   })
 
   return {
-    stats: query.data ?? [],
+    stats: query.data?.stats ?? [],
+    meta: query.data?.meta,
+    updatedAt: query.dataUpdatedAt || undefined,
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,

@@ -60,8 +60,8 @@ describe('shared load path between /tierlist and /matchups', () => {
   })
 
   it('derives consistent archetype usage data for both pages from the shared dataset', async () => {
-    const tierlistStats = await loadTierlistData()
-    const matchupStats = await loadMatchupData()
+    const { stats: tierlistStats } = await loadTierlistData()
+    const { stats: matchupStats } = await loadMatchupData()
 
     const tierlistIds = tierlistStats.map((s) => s.archetype.id).sort()
     const matchupIds = matchupStats.map((s) => s.archetype.id).sort()

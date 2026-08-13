@@ -1,9 +1,69 @@
 @import 'tailwindcss';
 
+/* Nur Latin + Latin-Extended (deckt deutsche Umlaute/ß ab) statt aller
+   Fontsource-Subsets (Kyrillisch/Griechisch/Vietnamesisch werden nie
+   gerendert) -- haelt den von Workbox precachten Font-Payload klein. */
+@import '@fontsource/space-grotesk/latin-400.css';
+@import '@fontsource/space-grotesk/latin-500.css';
+@import '@fontsource/space-grotesk/latin-700.css';
+@import '@fontsource/space-grotesk/latin-ext-400.css';
+@import '@fontsource/space-grotesk/latin-ext-500.css';
+@import '@fontsource/space-grotesk/latin-ext-700.css';
+@import '@fontsource/jetbrains-mono/latin-400.css';
+@import '@fontsource/jetbrains-mono/latin-500.css';
+@import '@fontsource/jetbrains-mono/latin-700.css';
+@import '@fontsource/jetbrains-mono/latin-ext-400.css';
+@import '@fontsource/jetbrains-mono/latin-ext-500.css';
+@import '@fontsource/jetbrains-mono/latin-ext-700.css';
+
+@theme {
+  --color-bg-base: #08090d;
+  --color-bg-panel: #0c0e14;
+  --color-bg-raised: #12151c;
+  --color-bg-inset: #1a1f29;
+  --color-line: #1e2430;
+  --color-line-strong: #2a3140;
+  --color-text: #e6eaf2;
+  --color-text-dim: #8a94a6;
+  --color-text-faint: #6b7488;
+  --color-accent: #45e0f5;
+  --color-accent-deep: #1d6c79;
+  --color-accent-ink: #04222a;
+  --color-contrast: #f062c0;
+  --color-contrast-deep: #8a3c74;
+  --color-contrast-ink: #2a0620;
+  --color-neutral-cell: #2a2f3a;
+
+  --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
+  background: var(--color-bg-base);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+@layer base {
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-panel);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
 }
