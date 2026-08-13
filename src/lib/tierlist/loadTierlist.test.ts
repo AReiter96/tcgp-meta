@@ -29,7 +29,7 @@ describe('loadTierlistData', () => {
     mockedFetchTournamentsCached.mockResolvedValue([tournamentFixture])
     mockedFetchStandingsCached.mockResolvedValue([pikachuDeckStandingFixture])
 
-    const stats = await loadTierlistData()
+    const { stats, meta } = await loadTierlistData()
 
     expect(mockedFetchTournamentsCached).toHaveBeenCalledWith({
       game: POCKET_GAME_ID,
@@ -40,6 +40,10 @@ describe('loadTierlistData', () => {
     )
     expect(stats).toHaveLength(1)
     expect(stats[0].archetype.id).toBe('pikachu-ex-zebstrika')
+    expect(meta).toEqual({
+      tournamentCount: 1,
+      totalPlayers: tournamentFixture.players,
+    })
   })
 
   it('propagates a failure instead of silently returning partial data', async () => {

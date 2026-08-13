@@ -19,7 +19,9 @@ export function useTierlist() {
   })
 
   return {
-    stats: query.data ?? [],
+    stats: query.data?.stats ?? [],
+    meta: query.data?.meta,
+    updatedAt: query.dataUpdatedAt || undefined,
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,

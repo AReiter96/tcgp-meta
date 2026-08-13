@@ -6,7 +6,7 @@
  */
 export function FanContentNotice() {
   return (
-    <p className="mb-4 rounded border border-gray-300 bg-gray-50 px-4 py-2 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
+    <p className="mb-4 border-l-2 border-line-strong pl-3 py-1 text-[11px] leading-relaxed text-text-faint">
       Inoffizielle Fan-Anwendung. Turnier- und Meta-Daten via Limitless TCG,
       Kartendaten via TCGdex. Nicht verbunden mit oder unterstuetzt durch The
       Pokemon Company, Nintendo, Game Freak oder Creatures Inc.

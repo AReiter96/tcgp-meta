@@ -5,13 +5,16 @@ interface CardSearchBarProps {
 
 export function CardSearchBar({ value, onChange }: CardSearchBarProps) {
   return (
-    <input
-      type="search"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      placeholder="Karte suchen..."
-      aria-label="Karte suchen"
-      className="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-    />
+    <div className="flex flex-1 items-center gap-2.5 border border-line-strong px-3.5">
+      <span className="font-mono text-xs text-accent">/</span>
+      <input
+        type="search"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Karte suchen…"
+        aria-label="Karte suchen"
+        className="h-11 w-full bg-transparent text-sm text-text placeholder:text-text-faint focus:outline-none"
+      />
+    </div>
   )
 }

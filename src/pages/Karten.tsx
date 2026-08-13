@@ -4,6 +4,11 @@ import { filterCards, getAvailableTypes } from '../lib/cards/filter'
 import { CardGrid } from '../components/CardGrid'
 import { CardSearchBar } from '../components/CardSearchBar'
 import { TypeFilter } from '../components/TypeFilter'
+import { FanContentNotice } from '../components/FanContentNotice'
+import { AktualisierenButton } from '../components/AktualisierenButton'
+import { LoadingRows } from '../components/LoadingRows'
+import { ErrorNotice } from '../components/ErrorNotice'
+import { useHeaderSlot } from '../components/layout/useHeaderSlot'
 
 export function Karten() {
   const {
@@ -24,46 +29,69 @@ export function Karten() {
     [cards, search, type],
   )
 
+  useHeaderSlot({
+    action: (
+      <AktualisierenButton onClick={() => refresh()} isLoading={isRefreshing} />
+    ),
+  })
+
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Karten</h1>
-        <button
-          type="button"
-          onClick={() => refresh()}
-          disabled={isRefreshing}
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
-        >
-          {isRefreshing ? 'Aktualisiere...' : 'Aktualisieren'}
-        </button>
+    <div className="mx-auto max-w-[1320px] px-0 py-0 md:px-6 md:py-8">
+      <div className="border-line md:border">
+        <div className="flex items-center justify-between gap-3 border-b border-line px-3.5 py-4 md:px-6 md:py-5">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-xl font-bold tracking-tight md:text-[26px]">
+              Karten
+            </h1>
+            <div className="font-mono text-[11px] text-text-faint">
+              {cards.length.toLocaleString('de-DE')} KARTEN
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 border-b border-line px-3.5 py-3.5 md:flex-row md:items-center md:px-6">
+          <CardSearchBar value={search} onChange={setSearch} />
+          <TypeFilter types={availableTypes} value={type} onChange={setType} />
+        </div>
+
+        <div className="px-3.5 py-3 md:px-6">
+          <FanContentNotice />
+        </div>
+
+        {isLoading && (
+          <div className="px-3.5 pb-4 md:px-6">
+            <LoadingRows label="Lade Kartendaten…" />
+          </div>
+        )}
+
+        {isError && (
+          <div className="px-3.5 pb-4 md:px-6">
+            <ErrorNotice
+              message="Kartendaten konnten nicht geladen werden."
+              detail={error instanceof Error ? error.message : undefined}
+            />
+          </div>
+        )}
+
+        {refreshError && (
+          <div className="px-3.5 pb-4 md:px-6">
+            <ErrorNotice
+              message="Aktualisierung fehlgeschlagen."
+              detail={
+                refreshError instanceof Error
+                  ? refreshError.message
+                  : undefined
+              }
+            />
+          </div>
+        )}
+
+        {!isLoading && !isError && (
+          <div className="px-3.5 pb-6 md:px-6">
+            <CardGrid cards={filteredCards} />
+          </div>
+        )}
       </div>
-
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row">
-        <CardSearchBar value={search} onChange={setSearch} />
-        <TypeFilter types={availableTypes} value={type} onChange={setType} />
-      </div>
-
-      {isLoading && (
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Lade Kartendaten...
-        </p>
-      )}
-
-      {isError && (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-          Kartendaten konnten nicht geladen werden
-          {error instanceof Error ? `: ${error.message}` : ''}.
-        </p>
-      )}
-
-      {refreshError && (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-          Aktualisierung fehlgeschlagen
-          {refreshError instanceof Error ? `: ${refreshError.message}` : ''}.
-        </p>
-      )}
-
-      {!isLoading && !isError && <CardGrid cards={filteredCards} />}
     </div>
   )
 }

@@ -6,6 +6,16 @@ import { runInBatches } from '../limitless/batch'
 import { POCKET_GAME_ID } from '../limitless/types'
 import { aggregateArchetypeStats, type ArchetypeStats } from './aggregate'
 
+export interface TierlistMeta {
+  tournamentCount: number
+  totalPlayers: number
+}
+
+export interface TierlistData {
+  stats: ArchetypeStats[]
+  meta: TierlistMeta
+}
+
 /**
  * Anzahl der zuletzt abgeschlossenen POCKET-Turniere, die fuer die Tierlist
  * herangezogen werden. 15 als Kompromiss zwischen Stichprobengroesse und
@@ -30,7 +40,7 @@ export const DEFAULT_TOURNAMENT_LIMIT = 15
  */
 export async function loadTierlistData(
   limit: number = DEFAULT_TOURNAMENT_LIMIT,
-): Promise<ArchetypeStats[]> {
+): Promise<TierlistData> {
   const tournaments = await fetchTournamentsCached({
     game: POCKET_GAME_ID,
     limit,
@@ -44,5 +54,11 @@ export async function loadTierlistData(
     }),
   )
 
-  return aggregateArchetypeStats(tournamentStandings)
+  return {
+    stats: aggregateArchetypeStats(tournamentStandings),
+    meta: {
+      tournamentCount: tournaments.length,
+      totalPlayers: tournaments.reduce((sum, t) => sum + t.players, 0),
+    },
+  }
 }

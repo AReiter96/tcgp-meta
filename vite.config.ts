@@ -15,8 +15,8 @@ export default defineConfig({
         short_name: 'TCGP-Meta',
         description:
           'Meta-/Tierlist-/Winrate-Daten fuer Pokemon TCG Pocket Ranked-PVP',
-        theme_color: '#08060d',
-        background_color: '#ffffff',
+        theme_color: '#45e0f5',
+        background_color: '#08090d',
         display: 'standalone',
         start_url: '/',
         icons: [
