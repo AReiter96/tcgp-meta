@@ -1,0 +1,23 @@
+{
+  "name": "tcgp-meta",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "EXTRA_APT_PACKAGES": "",
+      "RUST_TOOLCHAIN": ""
+    }
+  },
+  "features": {
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  },
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
+    "DISABLE_AUTOUPDATER": "1"
+  },
+  "mounts": [
+    "source=claude-code-config,target=/home/vscode/.claude,type=volume"
+  ],
+  "forwardPorts": [5173],
+  "postCreateCommand": "test -w /home/vscode/.claude && node --version && claude --version"
+}
